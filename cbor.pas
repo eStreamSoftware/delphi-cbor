@@ -26,7 +26,7 @@ type
     aIsIndefiniteLength: Boolean;
     aValue: UInt64;
     aType: TCborDataType;
-    constructor Create(V: UInt64; T: TCborDataType);
+    constructor Create(V: UInt64; T: TCborDataType = cborUnsigned);
     class operator Implicit(a: TCbor_UInt64): TCborItem_TBytes;
     class operator Implicit(cbor: TCborItem_TBytes): TCbor_UInt64;
   end;
@@ -44,7 +44,7 @@ type
     aValue: TArray<string>;
     aType: TCborDataType;
     aIsIndefiniteLength: Boolean;
-    constructor Create(V: TArray<string>; IsIL: Boolean);
+    constructor Create(V: TArray<string>);
     class operator Implicit(cbor: TCborItem_TBytes): TCbor_ByteString;
     class operator Implicit(a: TCbor_ByteString): TCborItem_TBytes;
   end;
@@ -53,7 +53,7 @@ type
     aValue: TArray<string>;
     aType: TCborDataType;
     aIsIndefiniteLength: Boolean;
-    constructor Create(V: TArray<string>; IsIL: Boolean);
+    constructor Create(V: TArray<string>);
     class operator Implicit(a: TCbor_UTF8): TCborItem_TBytes;
     class operator Implicit(cbor: TCborItem_TBytes): TCbor_UTF8;
   end;
@@ -63,7 +63,7 @@ type
     aValue: TArray<TCborItem_TBytes>;
     aType: TCborDataType;
     aIsIndefiniteLength: Boolean;
-    constructor Create(V: TArray<TCborItem_TBytes>; IsIL: Boolean);
+    constructor Create(V: TArray<TCborItem_TBytes>; IsIL: Boolean = false);
     class operator Implicit(a: TCbor_Array): TCborItem_TBytes;
     class operator Implicit(cbor: TCborItem_TBytes): TCbor_Array;
   end;
@@ -72,7 +72,7 @@ type
     aValue: TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>>;
     aType: TCborDataType;
     aIsIndefiniteLength: Boolean;
-    constructor Create(V: TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>>; IsIL: Boolean);
+    constructor Create(V: TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>>; IsIL: Boolean = false);
     class operator Implicit(a: TCbor_Map): TCborItem_TBytes;
     class operator Implicit(cbor: TCborItem_TBytes): TCbor_Map;
   end;
@@ -126,7 +126,6 @@ begin
   Result.aType := DataType;
 
   if not FIsIndefiniteLength then begin
-    Result.aIsIndefiniteLength := False;
     var e := ExtendedCount;
     Inc(FIndex, 1 + e);
     var c := s - 2 - e;
@@ -150,8 +149,8 @@ begin
   var s := DataItemSize;
   Result.aType := DataType;
   Result.aValue := TArray<string>.Create();
+
   if FIsIndefiniteLength then begin
-    Result.aIsIndefiniteLength := True;
     FIsIndefiniteLength := False;
     Inc(FIndex, 1);
     while FData[FIndex] <> $FF do begin
@@ -163,10 +162,11 @@ begin
     end;
   end
   else begin
-    Result.aIsIndefiniteLength := False;
     SetLength(Result.aValue, 1);
     SetString(Result.aValue[0], PAnsiChar(NativeUInt(Pointer(FData)) + FIndex + ExtendedCount + 1), s - ExtendedCount - 1);
   end;
+
+  Result.aIsIndefiniteLength := Length(Result.aValue) > 1;
 end;
 
 function TCbor.AsSemantic: Variant;
@@ -225,8 +225,7 @@ begin
   Result.aType := DataType;
   Result.aValue := TArray<string>.Create();
   if FIsIndefiniteLength then begin
-    Result.aIsIndefiniteLength := true;
-    Inc(FIndex, 1);
+    Inc(FIndex);
     FIsIndefiniteLength := False;
     while FData[FIndex] <> $FF do begin
       if (DataType = cborUTF8) then begin
@@ -236,10 +235,10 @@ begin
       else raise Exception.CreateFmt('Unsupported data type: %d', [Byte(DataType)]);
     end;
   end
-  else begin
-    Result.aIsIndefiniteLength := False;
+  else
     Result.aValue := [TEncoding.UTF8.GetString(FData, FIndex + ExtendedCount + 1, s - ExtendedCount - 1)];
-  end;
+
+  Result.aIsIndefiniteLength := Length(Result.aValue) > 1;
 end;
 
 function TCbor.AsUInt64: TCbor_UInt64;
@@ -247,18 +246,18 @@ begin
   var s := DataItemSize;
   Result.aType := DataType;
   if s = 1 then
-    Result.aValue := FData[FIndex] and $1F  // 000 11111, to get the last 5 bits
+    Result.aValue := FData[FIndex] and $1F
   else
-    Result.aValue := GetLittleEndian(FIndex + 1, s - 1);     //  FIndex+1 -> start from the byte after the header byte, s-1 -> deduct the header byte
+    Result.aValue := GetLittleEndian(FIndex + 1, s - 1);
 end;
 
 function TCbor.DataItemSize: UInt64;
 begin
-  Result := 1;           // for the first byte (header byte)
-  var i := FData[FIndex] and $1F;    // Convert the first 3 bits to 0 to get the value of count
+  Result := 1;
+  var i := FData[FIndex] and $1F;
   case DataType of
     cborUnsigned, cborSigned: begin
-      Inc(Result, ExtendedCount);  // + how many extended count
+      Inc(Result, ExtendedCount);
     end;
     cborByteString, cborUTF8, cborArray, cborMap: begin
       if i <= 23 then
@@ -266,7 +265,7 @@ begin
       else if i = 31 then
         FIsIndefiniteLength := True
       else
-         Inc(Result, GetLittleEndian(FIndex + 1, ExtendedCount) + ExtendedCount); // little endian return no. of bytes for payload, hence added with the extended count in header bytes to get total no. of bytes
+         Inc(Result, GetLittleEndian(FIndex + 1, ExtendedCount) + ExtendedCount);
     end;
     cborSemantic: begin
       Result := i;      
@@ -332,7 +331,7 @@ begin
   FIsIndefiniteLength := False;
 end;
 
-function TCbor.GetLittleEndian(Index, Count: Cardinal): UInt64;  // change to descending order
+function TCbor.GetLittleEndian(Index, Count: Cardinal): UInt64;
 begin
   var temp := '';
   var R := TArray<Byte>.Create(0, 0, 0, 0, 0, 0, 0, 0);
@@ -477,7 +476,7 @@ end;
 
 { TCbor_UInt64 }
 
-constructor TCbor_UInt64.Create(V: UInt64; T: TCborDataType);
+constructor TCbor_UInt64.Create(V: UInt64; T: TCborDataType = cborUnsigned);
 begin
   aValue := V;
   aIsIndefiniteLength:= false;
@@ -525,11 +524,14 @@ end;
 
 { TCbor_ByteString }
 
-constructor TCbor_ByteString.Create(V: TArray<string>; IsIL: Boolean);
+constructor TCbor_ByteString.Create(V: TArray<string>);
 begin
   aValue := V;
-  aIsIndefiniteLength := IsIL;
   aType := cborByteString;
+  if Length(V) > 1 then
+    aIsIndefiniteLength := true
+  else
+    aIsIndefiniteLength := false;
 end;
 
 class operator TCbor_ByteString.Implicit(cbor: TCborItem_TBytes): TCbor_ByteString;
@@ -548,11 +550,14 @@ end;
 
 { TCbor_UTF8 }
 
-constructor TCbor_UTF8.Create(V: TArray<string>; IsIL: Boolean);
+constructor TCbor_UTF8.Create(V: TArray<string>);
 begin
   aValue := V;
-  aIsIndefiniteLength := IsIL;
   aType := cborUTF8;
+  if Length(V) > 1 then
+    aIsIndefiniteLength := true
+  else
+    aIsIndefiniteLength := false;
 end;
 
 class operator TCbor_UTF8.Implicit(a: TCbor_UTF8): TCborItem_TBytes;
@@ -571,7 +576,7 @@ end;
 
 { TCbor_Array }
 
-constructor TCbor_Array.Create(V: TArray<TCborItem_TBytes>; IsIL: Boolean);
+constructor TCbor_Array.Create(V: TArray<TCborItem_TBytes>; IsIL: Boolean = false);
 begin
   aValue := V;
   aIsIndefiniteLength := IsIL;
@@ -595,7 +600,7 @@ end;
 { TCbor_Map }
 
 constructor TCbor_Map.Create(
-  V: TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>>; IsIL: Boolean);
+  V: TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>>; IsIL: Boolean = false);
 begin
   aValue := V;
   aIsIndefiniteLength := IsIL;

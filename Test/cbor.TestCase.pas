@@ -52,10 +52,12 @@ type
     procedure Test_EncodeUInt64_0;
     procedure Test_EncodeUInt64_1;
     procedure Test_EncodeUInt64_2;
+    procedure Test_EncodeUInt64_3;
     procedure Test_TborUInt64_0;
 
     procedure Test_EncodeInt64_0;
     procedure Test_EncodeInt64_1;
+    procedure Test_EncodeInt64_2;
     procedure Test_TCborInt64_0;
 
     procedure Test_EncodeByteString_0;
@@ -70,6 +72,7 @@ type
     procedure Test_EncodeArray_0;
     procedure Test_EncodeArray_1;
     procedure Test_EncodeArray_2;
+    procedure Test_EncodeArray_3;
 
     procedure Test_EncodeMap_0;
     procedure Test_EncodeMap_1;
@@ -369,6 +372,16 @@ begin
   CheckEquals(ans[0], d[0]);
 end;
 
+procedure TTestCase_cbor.Test_EncodeUInt64_3;
+begin
+  var c:= TCbor_UInt64.Create(18446744073709551615);
+
+  var d := Encode_uint64(c);
+  var ans := TBytes.Create($1B, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF);
+  for var i := 0 to Length(ans)-1 do
+    CheckEquals(ans[i], d[i]);
+end;
+
 procedure TTestCase_cbor.Test_TborUInt64_0;
 begin
   var c: TCbor := TBytes.Create($01);
@@ -406,7 +419,7 @@ procedure TTestCase_cbor.Test_EncodeArray_1;
 begin
   var c: TCbor_Array;
   c.aValue := [TCbor_Uint64.Create(10220110, cborUnsigned)] + [TCbor_Uint64.Create(122, cborUnsigned)]
-              + [TCbor_int64.Create(-3333333)] + [TCbor_utf8.Create(['Go reach out to get ya'], false)];
+              + [TCbor_int64.Create(-3333333)] + [TCbor_utf8.Create(['Go reach out to get ya'])];
   c.aType := cborArray;
   c.aIsIndefiniteLength := false;
 
@@ -422,9 +435,9 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeArray_2;
 begin
-  var arr: TArray<TCborItem_TBytes> := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], true)]
-              + [TCbor_Utf8.Create(['Provident neque ullam corporis sed.'], false)]
-              + [TCbor_Uint64.Create(12123, cborUnsigned)] + [TCbor_Int64.Create(-789789)] + [TCbor_Int64.Create(-1)];
+  var arr: TArray<TCborItem_TBytes> := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'])]
+              + [TCbor_Utf8.Create(['Provident neque ullam corporis sed.'])]
+              + [TCbor_Uint64.Create(12123)] + [TCbor_Int64.Create(-789789)] + [TCbor_Int64.Create(-1)];
 
   var d  := TBytes.Create(
     $9F, $5F, $58, $28, $52, $65, $74, $75, $72, $6E, $20, $56, $61, $6C, $75, $65,
@@ -437,6 +450,23 @@ begin
     $65, $6E, $74, $20, $6E, $65, $71, $75, $65, $20, $75, $6C, $6C, $61, $6D, $20,
     $63, $6F, $72, $70, $6F, $72, $69, $73, $20, $73, $65, $64, $2E, $19, $2F, $5B,
     $3A, $00, $0C, $0D, $1C, $20, $FF
+  );
+  var e := Encode_Array(TCbor_Array.Create(arr, true));
+  for var i := Low(d) to High(d) do
+    CheckEquals(d[i], e[i]);
+end;
+
+procedure TTestCase_cbor.Test_EncodeArray_3;
+begin
+  var arrNested: TArray<TCborItem_TBytes> :=  [TCbor_Uint64.Create(555)] + [TCbor_ByteString.Create(['Nested', 'arraY'])]
+              + [TCbor_Map.Create([TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(6), TCbor_Uint64.Create(6))])];
+
+  var arr: TArray<TCborItem_TBytes> := [TCbor_Uint64.Create(1)] + [TCbor_UTF8.Create(['lol'])]
+              + [TCbor_Array.Create(arrNested, false)] + [TCbor_Int64.Create(-999)];
+
+  var d  := TBytes.Create(
+    $9F, $01, $63, $6C, $6F, $6C, $83, $19, $02, $2B, $5F, $46, $4E, $65, $73, $74,
+    $65, $64, $45, $61, $72, $72, $61, $59, $FF, $A1, $06, $06, $39, $03, $E6, $FF
   );
   var e := Encode_Array(TCbor_Array.Create(arr, true));
   for var i := Low(d) to High(d) do
@@ -463,12 +493,22 @@ begin
     CheckEquals(ans[i], d[i]);
 end;
 
+procedure TTestCase_cbor.Test_EncodeInt64_2;
+begin
+  var c:= TCbor_Int64.Create(-199709011230);
+
+  var d := Encode_int64(c);
+  var ans := TBytes.Create($3B, $00, $00, $00, $2E, $7F, $95, $AD, $1D);
+  for var i := 0 to Length(ans)-1 do
+    CheckEquals(ans[i], d[i]);
+end;
+
 procedure TTestCase_cbor.Test_EncodeMap_0;
 begin
   var p : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
-    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(20, cborUnsigned), TCbor_ByteString.Create(['Twenty'], false))] +
-    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(21, cborUnsigned), TCbor_ByteString.Create(['Twenty-One'], false))] +
-    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Int64.Create(-22), TCbor_UTF8.Create(['-Twenty-Two'], false))];
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(20, cborUnsigned), TCbor_ByteString.Create(['Twenty']))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(21, cborUnsigned), TCbor_ByteString.Create(['Twenty-One']))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Int64.Create(-22), TCbor_UTF8.Create(['-Twenty-Two']))];
 
   var d := TBytes.Create(
     $A3, $14, $46, $54, $77, $65, $6E, $74, $79, $15, $4A, $54, $77, $65, $6E, $74,
@@ -482,14 +522,14 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeMap_1;
 begin
-  var arr : TArray<TCborItem_TBytes> := [TCbor_ByteString.Create(['L'], false)] + [TCbor_ByteString.Create(['E'], false)] + [TCbor_ByteString.Create(['V'], false)]
-    + [TCbor_ByteString.Create(['E'], false)] + [TCbor_ByteString.Create(['L'], false)] + [TCbor_ByteString.Create(['I'], false)]
-    + [TCbor_ByteString.Create(['N'], false)] + [TCbor_ByteString.Create(['G'], false)];
+  var arr : TArray<TCborItem_TBytes> := [TCbor_ByteString.Create(['L'])] + [TCbor_ByteString.Create(['E'])] + [TCbor_ByteString.Create(['V'])]
+    + [TCbor_ByteString.Create(['E'])] + [TCbor_ByteString.Create(['L'])] + [TCbor_ByteString.Create(['I'])]
+    + [TCbor_ByteString.Create(['N'])] + [TCbor_ByteString.Create(['G'])];
 
   var p : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
-    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_UTF8.Create(['!??'], false), TCbor_Int64.Create(-11111))] +
-    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_ByteString.Create(['...'], false),
-      TCbor_Map.Create([TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_ByteString.Create(['.'], false), TCbor_Uint64.Create(666, cborUnsigned))], false))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_UTF8.Create(['!??']), TCbor_Int64.Create(-11111))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_ByteString.Create(['...']),
+      TCbor_Map.Create([TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_ByteString.Create(['.']), TCbor_Uint64.Create(666, cborUnsigned))], false))] +
     [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(5010, cborUnsigned), TCbor_Array.Create(arr, false))];
 
   var d := TBytes.Create(
@@ -512,7 +552,7 @@ begin
 
 
   var p : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
-    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(1, cborUnsigned), TCbor_UTF8.Create(['Hello', 'Just', 'Kidding'], true))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(1, cborUnsigned), TCbor_UTF8.Create(['Hello', 'Just', 'Kidding']))] +
     [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(2, cborUnsigned), TCbor_Array.Create(arr, true))] +
     [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(3, cborUnsigned), TCbor_Map.Create(map, true))];
 
@@ -550,7 +590,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_0;
 begin
-  var c:= TCbor_ByteString.Create(['W1073 Combining signed type and unsigned 64-bit type - treated as an unsigned type'], false);
+  var c:= TCbor_ByteString.Create(['W1073 Combining signed type and unsigned 64-bit type - treated as an unsigned type']);
 
   var d:= TBytes.Create(
     $58, $52, $57, $31, $30, $37, $33, $20, $43, $6F, $6D, $62, $69, $6E, $69, $6E,
@@ -567,7 +607,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_1;
 begin
-  var c:= TCbor_ByteString.Create(['hELlo w0rLd'], false);
+  var c:= TCbor_ByteString.Create(['hELlo w0rLd']);
 
   var d:= TBytes.Create($4B, $68, $45, $4C, $6C, $6F, $20, $77, $30, $72, $4C, $64);
   var e:= Encode_ByteString(c);
@@ -577,7 +617,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_2;
 begin
-  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04], true);
+  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04]);
 
   var d:= TBytes.Create($5F, $45, $68, $65, $6C, $6C, $6F, $42, $30, $31, $44, $01, $02, $03, $04, $FF);
   var e:= Encode_ByteString(c);
@@ -587,7 +627,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_3;
 begin
-  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], true);
+  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.']);
 
   var d:= TBytes.Create(
     $5F, $58, $28, $52, $65, $74, $75, $72, $6E, $20, $56, $61, $6C, $75, $65, $20,
@@ -605,7 +645,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeUtf8_0;
 begin
-  var c:= TCbor_UTF8.Create(['𝓱'], false);
+  var c:= TCbor_UTF8.Create(['𝓱']);
 
   var d:= TBytes.Create($64, $F0, $9D, $93, $B1);
   var e:= Encode_utf8(c);
@@ -615,7 +655,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeUtf8_1;
 begin
-  var c:= TCbor_UTF8.Create(['Shine on me', 'Everything was going so well until I was accosted by a purple giraffe.', '𝓱𝓪𝓱𝓪'], true);
+  var c:= TCbor_UTF8.Create(['Shine on me', 'Everything was going so well until I was accosted by a purple giraffe.', '𝓱𝓪𝓱𝓪']);
 
   var d:= TBytes.Create(
     $7F, $6B, $53, $68, $69, $6E, $65, $20, $6F, $6E, $20, $6D, $65, $78, $46, $45,
