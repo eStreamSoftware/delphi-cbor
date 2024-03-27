@@ -71,6 +71,10 @@ type
     procedure Test_EncodeArray_1;
     procedure Test_EncodeArray_2;
 
+    procedure Test_EncodeMap_0;
+    procedure Test_EncodeMap_1;
+    procedure Test_EncodeMap_2;
+
     procedure Test_UInt64ToTBytes_0;
     procedure Test_UInt64ToTBytes_1;
     procedure Test_UInt64ToTBytes_2;
@@ -80,7 +84,7 @@ type
 implementation
 
 uses
-  Winapi.Windows, System.SysUtils,
+  Winapi.Windows, System.Generics.Collections, System.SysUtils,
   cbor;
 
 procedure TTestCase_cbor.Test_SemanticPositiveBigNum_0;
@@ -374,11 +378,11 @@ begin
   CheckEquals(ansUInt64.aValue, 1);
   Check(ansUInt64.aType = cborUnsigned);
 
-  var ansTCborDataItem : TCborDataItem := ansUInt64;
-  CheckEquals(ansTCborDataItem.aValue, '1');
-  Check(ansTCborDataItem.aType = cborUnsigned);
+  var a : TCborItem_TBytes := ansUInt64;
+  CheckEquals(a.aValue[0], $01);
+  Check(a.aType = cborUnsigned);
 
-  var ansUInt64_2 : TCbor_UInt64 := ansTCborDataItem;
+  var ansUInt64_2 : TCbor_UInt64 := a;
   CheckEquals(ansUInt64_2.aValue, 1);
   Check(ansUInt64_2.aType = cborUnsigned);
 
@@ -388,12 +392,12 @@ end;
 procedure TTestCase_cbor.Test_EncodeArray_0;
 begin
   var c: TCbor_Array;
-  c.aValue := [TCbor_Uint64.Create(1, false, cborUnsigned)] + [TCbor_UInt64.Create(2, false, cborUnsigned)] + [TCbor_UInt64.Create(3, false, cborUnsigned)];
+  c.aValue := [TCbor_Uint64.Create(1, cborUnsigned)] + [TCbor_UInt64.Create(2, cborUnsigned)] + [TCbor_UInt64.Create(3, cborUnsigned)];
   c.aType := cborArray;
   c.aIsIndefiniteLength := false;
 
   var d := TBytes.Create($83, $01, $02, $03);
-  var e := c.EncodeArray;
+  var e := Encode_Array(c);
   for var i := Low(d) to High(d) do
     CheckEquals(d[i], e[i]);
 end;
@@ -401,8 +405,8 @@ end;
 procedure TTestCase_cbor.Test_EncodeArray_1;
 begin
   var c: TCbor_Array;
-  c.aValue := [TCbor_Uint64.Create(10220110, false, cborUnsigned)] + [TCbor_Uint64.Create(122, false, cborUnsigned)]
-              + [TCbor_int64.Create(-3333333, false, cborSigned)] + [TCbor_utf8.Create(['Go reach out to get ya'], false, cborUTF8)];
+  c.aValue := [TCbor_Uint64.Create(10220110, cborUnsigned)] + [TCbor_Uint64.Create(122, cborUnsigned)]
+              + [TCbor_int64.Create(-3333333)] + [TCbor_utf8.Create(['Go reach out to get ya'], false)];
   c.aType := cborArray;
   c.aIsIndefiniteLength := false;
 
@@ -411,19 +415,16 @@ begin
     $20, $72, $65, $61, $63, $68, $20, $6F, $75, $74, $20, $74, $6F, $20, $67, $65,
     $74, $20, $79, $61
   );
-  var e := c.EncodeArray;
+  var e := Encode_Array(c);
   for var i := Low(d) to High(d) do
     CheckEquals(d[i], e[i]);
 end;
 
 procedure TTestCase_cbor.Test_EncodeArray_2;
 begin
-  var c: TCbor_Array;
-  c.aValue := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], true, cborByteString)] +
-              [TCbor_Utf8.Create(['Provident neque ullam corporis sed.'], false, cborUTF8)]
-              + [TCbor_Uint64.Create(12123, false, cborUnsigned)] + [TCbor_Int64.Create(-789789, false, cborSigned)] + [TCbor_Int64.Create(-1, false, cborSigned)];
-  c.aType := cborArray;
-  c.aIsIndefiniteLength := true;
+  var arr: TArray<TCborItem_TBytes> := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], true)]
+              + [TCbor_Utf8.Create(['Provident neque ullam corporis sed.'], false)]
+              + [TCbor_Uint64.Create(12123, cborUnsigned)] + [TCbor_Int64.Create(-789789)] + [TCbor_Int64.Create(-1)];
 
   var d  := TBytes.Create(
     $9F, $5F, $58, $28, $52, $65, $74, $75, $72, $6E, $20, $56, $61, $6C, $75, $65,
@@ -437,14 +438,14 @@ begin
     $63, $6F, $72, $70, $6F, $72, $69, $73, $20, $73, $65, $64, $2E, $19, $2F, $5B,
     $3A, $00, $0C, $0D, $1C, $20, $FF
   );
-  var e := c.EncodeArray;
+  var e := Encode_Array(TCbor_Array.Create(arr, true));
   for var i := Low(d) to High(d) do
     CheckEquals(d[i], e[i]);
 end;
 
 procedure TTestCase_cbor.Test_EncodeInt64_0;
 begin
-  var c:= TCbor_Int64.Create(-55493, false, cborSigned);
+  var c:= TCbor_Int64.Create(-55493);
 
   var d := Encode_int64(c);
   var ans := TBytes.Create($39, $D8, $C4);
@@ -454,12 +455,75 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeInt64_1;
 begin
-  var c:= TCbor_Int64.Create(-199709011230, false, cborSigned);
+  var c:= TCbor_Int64.Create(-199709011230);
 
   var d := Encode_int64(c);
   var ans := TBytes.Create($3B, $00, $00, $00, $2E, $7F, $95, $AD, $1D);
   for var i := 0 to Length(ans)-1 do
     CheckEquals(ans[i], d[i]);
+end;
+
+procedure TTestCase_cbor.Test_EncodeMap_0;
+begin
+  var p : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(20, cborUnsigned), TCbor_ByteString.Create(['Twenty'], false))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(21, cborUnsigned), TCbor_ByteString.Create(['Twenty-One'], false))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Int64.Create(-22), TCbor_UTF8.Create(['-Twenty-Two'], false))];
+
+  var d := TBytes.Create(
+    $A3, $14, $46, $54, $77, $65, $6E, $74, $79, $15, $4A, $54, $77, $65, $6E, $74,
+    $79, $2D, $4F, $6E, $65, $35, $6B, $2D, $54, $77, $65, $6E, $74, $79, $2D, $54,
+    $77, $6F);
+
+  var e := Encode_Map(TCbor_Map.Create(p, false));
+  for var i := Low(d) to High(d) do
+    CheckEquals(d[i], e[i]);
+end;
+
+procedure TTestCase_cbor.Test_EncodeMap_1;
+begin
+  var arr : TArray<TCborItem_TBytes> := [TCbor_ByteString.Create(['L'], false)] + [TCbor_ByteString.Create(['E'], false)] + [TCbor_ByteString.Create(['V'], false)]
+    + [TCbor_ByteString.Create(['E'], false)] + [TCbor_ByteString.Create(['L'], false)] + [TCbor_ByteString.Create(['I'], false)]
+    + [TCbor_ByteString.Create(['N'], false)] + [TCbor_ByteString.Create(['G'], false)];
+
+  var p : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_UTF8.Create(['!??'], false), TCbor_Int64.Create(-11111))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_ByteString.Create(['...'], false),
+      TCbor_Map.Create([TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_ByteString.Create(['.'], false), TCbor_Uint64.Create(666, cborUnsigned))], false))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(5010, cborUnsigned), TCbor_Array.Create(arr, false))];
+
+  var d := TBytes.Create(
+    $A3, $63, $21, $3F, $3F, $39, $2B, $66, $43, $2E, $2E, $2E, $A1, $41, $2E, $19,
+    $02, $9A, $19, $13, $92, $88, $41, $4C, $41, $45, $41, $56, $41, $45, $41, $4C,
+    $41, $49, $41, $4E, $41, $47);
+
+  var e := Encode_Map(TCbor_Map.Create(p, false));
+  for var i := Low(d) to High(d) do
+    CheckEquals(d[i], e[i]);
+end;
+
+procedure TTestCase_cbor.Test_EncodeMap_2;
+begin
+  var arr : TArray<TCborItem_TBytes> := [TCbor_Uint64.Create(2, cborUnsigned)] + [TCbor_Uint64.Create(3, cborUnsigned)];
+
+  var map : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(1, cborUnsigned), TCbor_Uint64.Create(1, cborUnsigned))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(2, cborUnsigned), TCbor_Uint64.Create(2, cborUnsigned))];
+
+
+  var p : TArray<TPair<TCborItem_TBytes, TCborItem_TBytes>> :=
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(1, cborUnsigned), TCbor_UTF8.Create(['Hello', 'Just', 'Kidding'], true))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(2, cborUnsigned), TCbor_Array.Create(arr, true))] +
+    [TPair<TCborItem_TBytes, TCborItem_TBytes>.Create(TCbor_Uint64.Create(3, cborUnsigned), TCbor_Map.Create(map, true))];
+
+  var d := TBytes.Create(
+    $BF, $01, $7F, $65, $48, $65, $6C, $6C, $6F, $64, $4A, $75, $73, $74, $67, $4B,
+    $69, $64, $64, $69, $6E, $67, $FF, $02, $9F, $02, $03, $FF, $03, $BF, $01, $01,
+    $02, $02, $FF, $FF);
+
+  var e := Encode_Map(TCbor_Map.Create(p, true));
+  for var i := Low(d) to High(d) do
+    CheckEquals(d[i], e[i]);
 end;
 
 procedure TTestCase_cbor.Test_TCborInt64_0;
@@ -471,11 +535,13 @@ begin
   CheckEquals(ansInt64.aValue, -53872);
   Check(ansInt64.aType = cborSigned);
 
-  var ansTCborDataItem : TCborDataItem := ansInt64;
-  CheckEquals(ansTCborDataItem.aValue, '-53872');
-  Check(ansTCborDataItem.aType = cborSigned);
+  var a : TCborItem_TBytes := ansInt64;
+  var b := TBytes.Create($39, $d2, $6f);
+  for var i := Low(b) to High(b) do
+    CheckEquals(b[i], a.aValue[i]);
+  Check(a.aType = cborSigned);
 
-  var ansInt64_2 : TCbor_Int64 := ansTCborDataItem;
+  var ansInt64_2 : TCbor_Int64 := a;
   CheckEquals(ansInt64_2.aValue, -53872);
   Check(ansInt64_2.aType = cborSigned);
 
@@ -484,7 +550,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_0;
 begin
-  var c:= TCbor_ByteString.Create(['W1073 Combining signed type and unsigned 64-bit type - treated as an unsigned type'], false, cborByteString);
+  var c:= TCbor_ByteString.Create(['W1073 Combining signed type and unsigned 64-bit type - treated as an unsigned type'], false);
 
   var d:= TBytes.Create(
     $58, $52, $57, $31, $30, $37, $33, $20, $43, $6F, $6D, $62, $69, $6E, $69, $6E,
@@ -501,7 +567,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_1;
 begin
-  var c:= TCbor_ByteString.Create(['hELlo w0rLd'], false, cborByteString);
+  var c:= TCbor_ByteString.Create(['hELlo w0rLd'], false);
 
   var d:= TBytes.Create($4B, $68, $45, $4C, $6C, $6F, $20, $77, $30, $72, $4C, $64);
   var e:= Encode_ByteString(c);
@@ -511,7 +577,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_2;
 begin
-  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04], true, cborByteString);
+  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04], true);
 
   var d:= TBytes.Create($5F, $45, $68, $65, $6C, $6C, $6F, $42, $30, $31, $44, $01, $02, $03, $04, $FF);
   var e:= Encode_ByteString(c);
@@ -521,7 +587,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_3;
 begin
-  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], true, cborByteString);
+  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], true);
 
   var d:= TBytes.Create(
     $5F, $58, $28, $52, $65, $74, $75, $72, $6E, $20, $56, $61, $6C, $75, $65, $20,
@@ -539,7 +605,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeUtf8_0;
 begin
-  var c:= TCbor_UTF8.Create(['𝓱'], false, cborUTF8);
+  var c:= TCbor_UTF8.Create(['𝓱'], false);
 
   var d:= TBytes.Create($64, $F0, $9D, $93, $B1);
   var e:= Encode_utf8(c);
@@ -549,7 +615,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeUtf8_1;
 begin
-  var c:= TCbor_UTF8.Create(['Shine on me', 'Everything was going so well until I was accosted by a purple giraffe.', '𝓱𝓪𝓱𝓪'], true, cborUTF8);
+  var c:= TCbor_UTF8.Create(['Shine on me', 'Everything was going so well until I was accosted by a purple giraffe.', '𝓱𝓪𝓱𝓪'], true);
 
   var d:= TBytes.Create(
     $7F, $6B, $53, $68, $69, $6E, $65, $20, $6F, $6E, $20, $6D, $65, $78, $46, $45,
@@ -799,9 +865,13 @@ begin
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
-//  CheckEquals('''
-//  ጎክ ፕዘቿ ዕልዪጕ ዕልሠክ, ነየዪቿልዕጎክኗ ፕዪቿጠጌረጎክኗ ሠጎክኗነ. ጕቿቿየ ዐክ ነዘጎክጎክኗ ጠልጕቿ ጎፕ ጌዪጎኗዘፕቿዪ ፕዘልክ ል ነየዐፕረጎኗዘፕ.....ᴰᴱᴸᴾᴴᴵ
-//  ''', c.AsUTF8.aValue);
+  var d := c.AsUTF8;
+  CheckEquals('''
+  ጎክ ፕዘቿ ዕልዪጕ ዕልሠክ, ነየዪቿልዕጎክኗ ፕዪቿጠጌረጎክኗ ሠጎክኗነ. ጕቿቿየ ዐክ ነዘጎክጎክኗ ጠልጕቿ ጎፕ ጌዪጎኗዘፕቿዪ ፕዘልክ ል ነየዐፕረጎኗዘፕ.....
+  ''' , d.aValue[0]);
+  CheckEquals('''
+  ᴰᴱᴸᴾᴴᴵ
+  ''', d.aValue[1]);
 
   CheckFalse(c.Next);
 end;
@@ -812,10 +882,9 @@ begin
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
-//  var ans : TCborArray := c.AsArray.aValue;
-//  OutputDebugString(PChar(ans));
-//  Check(ans[0] = 1);
-//  Check(ans[1] = 'hello');
+  var ans : TCbor_Array := c.AsArray;
+  Check(TCbor_Uint64(ans.aValue[0]).aValue = 1);
+  Check(TCbor_ByteString(ans.aValue[1]).aValue[0] = 'hello');
 end;
 
 procedure TTestCase_cbor.Test_Array_1;
@@ -824,11 +893,11 @@ begin
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
-//  var ans : TCborArray := c.AsArray;
-//
-//  Check(ans[0] = 1);
-//  Check(ans[1][0] = 2);
-//  Check(ans[1][1] = 3);
+  var ans : TCbor_Array := c.AsArray;
+
+  Check(TCbor_Uint64(ans.aValue[0]).aValue = 1);
+  Check(TCbor_Uint64(TCbor_Array(ans.aValue[1]).aValue[0]).aValue = 2);
+  Check(TCbor_Uint64(TCbor_Array(ans.aValue[1]).aValue[1]).aValue = 3);
 end;
 
 procedure TTestCase_cbor.Test_Array_24;
@@ -844,35 +913,36 @@ begin
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
-//  var ans : TCborArray := c.AsArray;
-//  Check(ans[0] = 1);
-//  Check(ans[1] = 2);
-//  Check(ans[2] = 3);
-//  Check(ans[3] = 4);
-//  Check(ans[4] = 5);
-//  Check(ans[5] = 'hi');
-//  Check(ans[6] = '乃乇');
-//  Check(ans[7] = -22);
-//  Check(ans[8] = -222);
-//  Check(ans[9][0] = 1);
-//  Check(ans[9][1] = 2);
-//  Check(ans[10] = 300);
-//  Check(ans[11] = 600);
-//  Check(ans[12] = 900);
-//  Check(ans[13] = -1200);
-//  Check(ans[14] = 'BTS');
-//  Check(ans[15] = 'Go');
-//  Check(ans[16] = 'your');
-//  Check(ans[17] = 'own');
-//  Check(ans[18] = 'way');
-//  Check(ans[19][0] = 'Put');
-//  Check(ans[19][1] = 'weakness');
-//  Check(ans[19][2] = 'away');
-//  Check(ans[19][3] = 2013);
-//  Check(ans[20] = 21);
-//  Check(ans[21] = 22);
-//  Check(ans[22] = 23);
-//  Check(ans[23] = 24);
+  var ans := c.AsArray;
+//  var ans : TCbor_Array := [1, 2, 3, 4, 5, 'hi', '乃乇', -22, -222, 1, 2, 300, 600, 900, -1200, 'BTS', 'Go', 'your', 'own', 'way', 'Put', 'weakness', 'away',
+  Check(TCbor_UInt64(ans.aValue[0]).aValue = 1);
+  Check(TCbor_UInt64(ans.aValue[1]).aValue = 2);
+  Check(TCbor_UInt64(ans.aValue[2]).aValue = 3);
+  Check(TCbor_UInt64(ans.aValue[3]).aValue = 4);
+  Check(TCbor_UInt64(ans.aValue[4]).aValue = 5);
+  Check(TCbor_ByteString(ans.aValue[5]).aValue[0] = 'hi');
+  Check(TCbor_UTF8(ans.aValue[6]).aValue[0] = '乃乇');
+  Check(TCbor_Int64(ans.aValue[7]).aValue = -22);
+  Check(TCbor_Int64(ans.aValue[8]).aValue = -222);
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[9]).aValue[0]).aValue = 1);
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[9]).aValue[1]).aValue = 2);
+  Check(TCbor_UInt64(ans.aValue[10]).aValue = 300);
+  Check(TCbor_UInt64(ans.aValue[11]).aValue = 600);
+  Check(TCbor_UInt64(ans.aValue[12]).aValue = 900);
+  Check(TCbor_Int64(ans.aValue[13]).aValue = -1200);
+  Check(TCbor_ByteString(ans.aValue[14]).aValue[0] = 'BTS');
+  Check(TCbor_ByteString(ans.aValue[15]).aValue[0] = 'Go');
+  Check(TCbor_ByteString(ans.aValue[16]).aValue[0] = 'your');
+  Check(TCbor_ByteString(ans.aValue[17]).aValue[0] = 'own');
+  Check(TCbor_ByteString(ans.aValue[18]).aValue[0] = 'way');
+  Check(TCbor_UTF8(TCbor_Array(ans.aValue[19]).aValue[0]).aValue[0] = 'Put');
+  Check(TCbor_UTF8(TCbor_Array(ans.aValue[19]).aValue[1]).aValue[0] = 'weakness');
+  Check(TCbor_UTF8(TCbor_Array(ans.aValue[19]).aValue[2]).aValue[0] = 'away');
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[19]).aValue[3]).aValue = 2013);
+  Check(TCbor_UInt64(ans.aValue[20]).aValue = 21);
+  Check(TCbor_UInt64(ans.aValue[21]).aValue = 22);
+  Check(TCbor_UInt64(ans.aValue[22]).aValue = 23);
+  Check(TCbor_UInt64(ans.aValue[23]).aValue = 24);
 
   CheckFalse(c.Next);
 end;
@@ -886,13 +956,13 @@ begin
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
 
-//  var ans : TCborArray := c.AsArray;
-//  Check(ans[0] = 1);
-//  Check(ans[1] = 'hello');
-//  Check(ans[2][0] = 1);
-//  Check(ans[2][1] = 2);
-//  Check(ans[3][0][0] = 1);
-//  Check(ans[3][0][1] = 2);
+  var ans : TCbor_Array := c.AsArray;
+  Check(TCbor_Uint64(ans.aValue[0]).aValue = 1);
+  Check(TCbor_ByteString(ans.aValue[1]).aValue[0] = 'hello');
+  Check(TCbor_Uint64(TCbor_Array(ans.aValue[2]).aValue[0]).aValue = 1);
+  Check(TCbor_Uint64(TCbor_Array(ans.aValue[2]).aValue[1]).aValue = 2);
+  Check(TCbor_Uint64(TCbor_Array(TCbor_Array(ans.aValue[3]).aValue[0]).aValue[0]).aValue = 1);
+  Check(TCbor_Uint64(TCbor_Array(TCbor_Array(ans.aValue[3]).aValue[0]).aValue[1]).aValue = 2);
 
   CheckFalse(c.Next);
 
@@ -907,11 +977,11 @@ begin
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
 
-  var ans : TCborMap := c.AsMap;
-  Check(ans[0].bKey = 't');
-  Check(ans[0].bValue = 1234);
-  Check(ans[1].bKey = 'l');
-  Check(ans[1].bValue = 2345);
+  var ans : TCbor_Map := c.AsMap;
+  Check(TCbor_UTF8(ans.aValue[0].Key).aValue[0] = 't');
+  Check(TCbor_UInt64(ans.aValue[0].Value).aValue = 1234);
+  Check(TCbor_UTF8(ans.aValue[1].Key).aValue[0] = 'l');
+  Check(TCbor_UInt64(ans.aValue[1].Value).aValue = 2345);
 end;
 
 procedure TTestCase_cbor.Test_Map_1;
@@ -925,19 +995,20 @@ begin
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
 
-  var ans : TCborMap := c.AsMap;
-  Check(ans[0].bKey = 1);
-  Check(ans[0].bValue = 'JJK');
-  Check(ans[1].bKey = 2);
-  Check(ans[1].bValue = -1000000);
-  Check(ans[2].bKey = 'key');
-  Check(ans[2].bValue = 'ｖａｌｕｅ');
-  Check(ans[3].bKey = 'array');
-  Check(ans[3].bValue[0] = 1);
-  Check(ans[3].bValue[1] = 2);
-  Check(ans[3].bValue[2] = 3);
-  Check(ans[3].bValue[3] = 4);
-  Check(ans[3].bValue[4] = 5);
+  var ans : TCbor_Map := c.AsMap;
+  Check(TCbor_UInt64(ans.aValue[0].Key).aValue = 1);
+  Check(TCbor_UTF8(ans.aValue[0].Value).aValue[0] = 'JJK');
+  Check(TCbor_UInt64(ans.aValue[1].Key).aValue = 2);
+  Check(TCbor_Int64(ans.aValue[1].Value).aValue = -1000000);
+  Check(TCbor_ByteString(ans.aValue[2].Key).aValue[0] = 'key');
+  Check(TCbor_UTF8(ans.aValue[2].Value).aValue[0] = 'ｖａｌｕｅ');
+  Check(TCbor_ByteString(ans.aValue[3].Key).aValue[0] = 'array');
+  var a : TCbor_Array := ans.aValue[3].Value;
+  Check(TCbor_UInt64(a.aValue[0]).aValue = 1);
+  Check(TCbor_UInt64(a.aValue[1]).aValue = 2);
+  Check(TCbor_UInt64(a.aValue[2]).aValue = 3);
+  Check(TCbor_UInt64(a.aValue[3]).aValue = 4);
+  Check(TCbor_UInt64(a.aValue[4]).aValue = 5);
 
   CheckFalse(c.Next);
 end;
@@ -945,44 +1016,22 @@ end;
 procedure TTestCase_cbor.Test_Map_2;
 begin
   var c: TCbor := TBytes.Create(
-//    $A3, $65, $48, $65, $6C, $6C, $6F, $67, $49, $74, $27, $73, $20, $6D, $65, $49,
-//    $4C, $65, $74, $20, $69, $74, $20, $67, $6F, $A2, $6E, $4C, $65, $74, $20, $69,
-//    $74, $20, $67, $6F, $6F, $6F, $6F, $6F, $6F, $78, $1A, $43, $61, $6E, $27, $74,
-//    $20, $68, $6F, $6C, $64, $20, $69, $74, $20, $62, $61, $63, $6B, $20, $61, $6E,
-//    $79, $6D, $6F, $72, $65, $6C, $4C, $65, $74, $20, $69, $74, $20, $67, $6F, $2E,
-//    $2E, $2E, $71, $4C, $45, $54, $20, $49, $54, $20, $67, $4F, $6F, $4F, $6F, $4F,
-//    $6F, $4F, $6F, $4F, $68, $53, $74, $61, $6E, $64, $69, $6E, $67, $6B, $4E, $65,
-//    $78, $74, $20, $74, $6F, $20, $79, $6F, $75
     $A3, $01, $02, $03, $A2, $18, $1F, $0D, $18, $20, $17, $04, $05
   );
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
 
-  var ans : TCborMap := c.AsMap;
-  Check(ans[0].bKey = 1);
-  Check(ans[0].bValue = 2);
-  Check(ans[1].bKey = 3);
-  Check(ans[1].bValue[0].bKey = 31);
-  Check(ans[1].bValue[0].bValue = 13);
-  Check(ans[1].bValue[1].bKey = 32);
-  Check(ans[1].bValue[1].bValue = 23);
-  Check(ans[2].bKey = 4);
-  Check(ans[2].bValue = 5);
-
-//  Check(ans[0].bKey = 'Hello');
-//  Check(ans[0].bValue = '''
-//  It's me
-//  ''');
-//  Check(ans[1].bKey = 'Let it go');
-//  Check(ans[1].bValue[0].bKey = 'Let it goooooo');
-//  Check(ans[1].bValue[0].bValue = '''
-//  Can't hold it back anymore
-//  ''');
-//  Check(ans[1].bValue[1].bKey = 'Let it go...');
-//  Check(ans[1].bValue[1].bValue = 'LET IT gOoOoOoOoO');
-//  Check(ans[2].bKey = 'Standing');
-//  Check(ans[2].bValue = 'Next to you');
+  var ans : TCbor_Map := c.AsMap;
+  Check(TCbor_UInt64(ans.aValue[0].Key).aValue = 1);
+  Check(TCbor_UInt64(ans.aValue[0].Value).aValue = 2);
+  Check(TCbor_UInt64(ans.aValue[1].Key).aValue = 3);
+  Check(TCbor_UInt64(TCbor_Map(ans.aValue[1].Value).aValue[0].Key).aValue = 31);
+  Check(TCbor_UInt64(TCbor_Map(ans.aValue[1].Value).aValue[0].Value).aValue = 13);
+  Check(TCbor_UInt64(TCbor_Map(ans.aValue[1].Value).aValue[1].Key).aValue = 32);
+  Check(TCbor_UInt64(TCbor_Map(ans.aValue[1].Value).aValue[1].Value).aValue = 23);
+  Check(TCbor_UInt64(ans.aValue[2].Key).aValue = 4);
+  Check(TCbor_UInt64(ans.aValue[2].Value).aValue = 5);
 
   CheckFalse(c.Next);
 end;
@@ -1014,51 +1063,51 @@ begin
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
 
-  var ans : TCborMap := c.AsMap;
-  Check(ans[0].bKey = 'No. 1'); Check(ans[0].bValue = 'No. 1');
-  Check(ans[1].bKey = 2); Check(ans[1].bValue = 2);
-  Check(ans[2].bKey = 3); Check(ans[2].bValue = 3);
-  Check(ans[3].bKey = 'name'); Check(ans[3].bValue = 'Erkin Qadir');
-  Check(ans[4].bKey = 'isoCode'); Check(ans[4].bValue = 'AQ');
-  Check(ans[5].bKey = 'WHO'); Check(ans[5].bValue = 'Joe');
-  Check(ans[6].bKey = 'WHAT');  Check(ans[6].bValue = 'Car');
-  Check(ans[7].bKey = 'AMOUNT'); Check(ans[7].bValue = 20);
-  Check(ans[8].bKey = 'fruit');  Check(ans[8].bValue = 'Apple');
-  Check(ans[9].bKey = 'size'); Check(ans[9].bValue = 'Large');
-  Check(ans[10].bKey = 'color');  Check(ans[10].bValue = 'Red');
-  Check(ans[11].bKey = 'key');  Check(ans[11].bValue = 'ｖａｌｕｅ');
-  Check(ans[12].bKey = 'array');
-  Check(ans[12].bValue[0] = 1);
-  Check(ans[12].bValue[1] = 2);
-  Check(ans[12].bValue[2] = 3);
-  Check(ans[12].bValue[3] = 4);
-  Check(ans[12].bValue[4] = 5);
-  Check(ans[13].bKey = 'options');
-  Check(ans[13].bValue[0] = 10);
-  Check(ans[13].bValue[1] = '11');
-  Check(ans[13].bValue[2] = '12');
-  Check(ans[13].bValue[3] = -13);
-  Check(ans[14].bKey = 'answer'); Check(ans[14].bValue = 12);
-  Check(ans[15].bKey = 'language'); Check(ans[15].bValue = 'Uyghur');
-  Check(ans[16].bKey = 'id'); Check(ans[16].bValue = 'GV6TA1AATZYBJ3VR');
-  Check(ans[17].bKey = 'bio');  Check(ans[17].bValue = 'Phasellus massa ligula');
-  Check(ans[18].bKey = 'version');  Check(ans[18].bValue = 3);
-  Check(ans[19].bKey = 4);  Check(ans[19].bValue = 4);
-  Check(ans[20].bKey = 5);  Check(ans[20].bValue = 5);
-  Check(ans[21].bKey = 6);  Check(ans[21].bValue = 6);
-  Check(ans[22].bKey = 7);  Check(ans[22].bValue = 7);
-  Check(ans[23].bKey = 8);  Check(ans[23].bValue = 8);
-  Check(ans[24].bKey = 9);  Check(ans[24].bValue = 9);
-  Check(ans[25].bKey = 10);  Check(ans[25].bValue = 10);
-  Check(ans[26].bKey = 100);  Check(ans[26].bValue = 100);
-  Check(ans[27].bKey = 1000);  Check(ans[27].bValue = 1000);
-  Check(ans[28].bKey = 10000);  Check(ans[28].bValue = 10000);
-  Check(ans[29].bKey = 2013);  Check(ans[29].bValue = -613);
-  Check(ans[30].bKey = 1997);  Check(ans[30].bValue = -901);
-  Check(ans[31].bKey = 1995);  Check(ans[31].bValue = 12301013);
-  Check(ans[32].bKey = 1994);  Check(ans[32].bValue = 9120219);
-  Check(ans[33].bKey = 1993);  Check(ans[33].bValue = 309);
-  Check(ans[34].bKey = 1992);  Check(ans[34].bValue = 1204);
+  var ans : TCbor_Map := c.AsMap;
+  Check(TCbor_ByteString(ans.aValue[0].Key).aValue[0] = 'No. 1'); Check(TCbor_UTF8(ans.aValue[0].Value).aValue[0] = 'No. 1');
+  Check(TCbor_UInt64(ans.aValue[1].Key).aValue = 2);              Check(TCbor_UInt64(ans.aValue[1].Value).aValue = 2);
+  Check(TCbor_UInt64(ans.aValue[2].Key).aValue = 3);              Check(TCbor_UInt64(ans.aValue[2].Value).aValue = 3);
+  Check(TCbor_UTF8(ans.aValue[3].Key).aValue[0] = 'name');        Check(TCbor_UTF8(ans.aValue[3].Value).aValue[0] = 'Erkin Qadir');
+  Check(TCbor_UTF8(ans.aValue[4].Key).aValue[0] = 'isoCode');     Check(TCbor_UTF8(ans.aValue[4].Value).aValue[0] = 'AQ');
+  Check(TCbor_UTF8(ans.aValue[5].Key).aValue[0] = 'WHO');         Check(TCbor_UTF8(ans.aValue[5].Value).aValue[0] = 'Joe');
+  Check(TCbor_UTF8(ans.aValue[6].Key).aValue[0] = 'WHAT');        Check(TCbor_UTF8(ans.aValue[6].Value).aValue[0] = 'Car');
+  Check(TCbor_UTF8(ans.aValue[7].Key).aValue[0] = 'AMOUNT');      Check(TCbor_UInt64(ans.aValue[7].Value).aValue = 20);
+  Check(TCbor_UTF8(ans.aValue[8].Key).aValue[0] = 'fruit');       Check(TCbor_UTF8(ans.aValue[8].Value).aValue[0] = 'Apple');
+  Check(TCbor_UTF8(ans.aValue[9].Key).aValue[0] = 'size');        Check(TCbor_UTF8(ans.aValue[9].Value).aValue[0] = 'Large');
+  Check(TCbor_UTF8(ans.aValue[10].Key).aValue[0] = 'color');      Check(TCbor_UTF8(ans.aValue[10].Value).aValue[0] = 'Red');
+  Check(TCbor_ByteString(ans.aValue[11].Key).aValue[0] = 'key');  Check(TCbor_UTF8(ans.aValue[11].Value).aValue[0] = 'ｖａｌｕｅ');
+  Check(TCbor_ByteString(ans.aValue[12].Key).aValue[0] = 'array');
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[12].Value).aValue[0]).aValue = 1);
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[12].Value).aValue[1]).aValue = 2);
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[12].Value).aValue[2]).aValue = 3);
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[12].Value).aValue[3]).aValue = 4);
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[12].Value).aValue[4]).aValue = 5);
+  Check(TCbor_UTF8(ans.aValue[13].Key).aValue[0] = 'options');
+  Check(TCbor_UInt64(TCbor_Array(ans.aValue[13].Value).aValue[0]).aValue = 10);
+  Check(TCbor_UTF8(TCbor_Array(ans.aValue[13].Value).aValue[1]).aValue[0] = '11');
+  Check(TCbor_ByteString(TCbor_Array(ans.aValue[13].Value).aValue[2]).aValue[0] = '12');
+  Check(TCbor_Int64(TCbor_Array(ans.aValue[13].Value).aValue[3]).aValue = -13);
+  Check(TCbor_UTF8(ans.aValue[14].Key).aValue[0] = 'answer');     Check(TCbor_UInt64(ans.aValue[14].Value).aValue = 12);
+  Check(TCbor_UTF8(ans.aValue[15].Key).aValue[0] = 'language');   Check(TCbor_UTF8(ans.aValue[15].Value).aValue[0] = 'Uyghur');
+  Check(TCbor_UTF8(ans.aValue[16].Key).aValue[0] = 'id');         Check(TCbor_UTF8(ans.aValue[16].Value).aValue[0] = 'GV6TA1AATZYBJ3VR');
+  Check(TCbor_UTF8(ans.aValue[17].Key).aValue[0] = 'bio');        Check(TCbor_UTF8(ans.aValue[17].Value).aValue[0] = 'Phasellus massa ligula');
+  Check(TCbor_UTF8(ans.aValue[18].Key).aValue[0] = 'version');    Check(TCbor_UInt64(ans.aValue[18].Value).aValue = 3);
+  Check(TCbor_UInt64(ans.aValue[19].Key).aValue = 4);             Check(TCbor_UInt64(ans.aValue[19].Value).aValue = 4);
+  Check(TCbor_UInt64(ans.aValue[20].Key).aValue = 5);             Check(TCbor_UInt64(ans.aValue[20].Value).aValue = 5);
+  Check(TCbor_UInt64(ans.aValue[21].Key).aValue = 6);             Check(TCbor_UInt64(ans.aValue[21].Value).aValue = 6);
+  Check(TCbor_UInt64(ans.aValue[22].Key).aValue = 7);             Check(TCbor_UInt64(ans.aValue[22].Value).aValue = 7);
+  Check(TCbor_UInt64(ans.aValue[23].Key).aValue = 8);             Check(TCbor_UInt64(ans.aValue[23].Value).aValue = 8);
+  Check(TCbor_UInt64(ans.aValue[24].Key).aValue = 9);             Check(TCbor_UInt64(ans.aValue[24].Value).aValue = 9);
+  Check(TCbor_UInt64(ans.aValue[25].Key).aValue = 10);            Check(TCbor_UInt64(ans.aValue[25].Value).aValue = 10);
+  Check(TCbor_UInt64(ans.aValue[26].Key).aValue = 100);           Check(TCbor_UInt64(ans.aValue[26].Value).aValue = 100);
+  Check(TCbor_UInt64(ans.aValue[27].Key).aValue = 1000);          Check(TCbor_UInt64(ans.aValue[27].Value).aValue = 1000);
+  Check(TCbor_UInt64(ans.aValue[28].Key).aValue = 10000);         Check(TCbor_UInt64(ans.aValue[28].Value).aValue = 10000);
+  Check(TCbor_UInt64(ans.aValue[29].Key).aValue = 2013);          Check(TCbor_Int64(ans.aValue[29].Value).aValue = -613);
+  Check(TCbor_UInt64(ans.aValue[30].Key).aValue = 1997);          Check(TCbor_Int64(ans.aValue[30].Value).aValue = -901);
+  Check(TCbor_UInt64(ans.aValue[31].Key).aValue = 1995);          Check(TCbor_UInt64(ans.aValue[31].Value).aValue = 12301013);
+  Check(TCbor_UInt64(ans.aValue[32].Key).aValue = 1994);          Check(TCbor_UInt64(ans.aValue[32].Value).aValue = 9120219);
+  Check(TCbor_UInt64(ans.aValue[33].Key).aValue = 1993);          Check(TCbor_UInt64(ans.aValue[33].Value).aValue = 309);
+  Check(TCbor_UInt64(ans.aValue[34].Key).aValue = 1992);          Check(TCbor_UInt64(ans.aValue[34].Value).aValue = 1204);
 
   CheckFalse(c.Next);
 end;
@@ -1073,15 +1122,15 @@ begin
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
 
-  var ans : TCborMap := c.AsMap;
-  Check(ans[0].bKey = 1);
-  Check(ans[0].bValue = 'KNjOoN');
-  Check(ans[1].bKey = 2);
-  Check(ans[1].bValue = 'KsEOkJ');
-  Check(ans[2].bKey = 3);
-  Check(ans[2].bValue = -613);
-  Check(ans[3].bKey = 1997);
-  Check(ans[3].bValue = -901);
+  var ans : TCbor_Map := c.AsMap;
+  Check(TCbor_UInt64(ans.aValue[0].Key).aValue = 1);
+  Check(TCbor_UTF8(ans.aValue[0].Value).aValue[0] = 'KNjOoN');
+  Check(TCbor_UInt64(ans.aValue[1].Key).aValue = 2);
+  Check(TCbor_ByteString(ans.aValue[1].Value).aValue[0] = 'KsEOkJ');
+  Check(TCbor_UInt64(ans.aValue[2].Key).aValue = 3);
+  Check(TCbor_Int64(ans.aValue[2].Value).aValue = -613);
+  Check(TCbor_UInt64(ans.aValue[3].Key).aValue = 1997);
+  Check(TCbor_Int64(ans.aValue[3].Value).aValue = -901);
 
   CheckFalse(c.Next);
 end;
@@ -1229,21 +1278,18 @@ procedure TTestCase_cbor.Test_Unsigned_64;
 begin
   var c: TCbor := TBytes.Create($1B, $00, $1F, $E0, $22, $99, $A3, $8B, $8C);
 
-//  CheckTrue(c.Next);
-//  Check(cborUnsigned = c.DataType);
-//  CheckEquals(9, c.DataItemSize);
-//  CheckEquals(8972163489172364, c.AsUInt64.aValue);
-
   CheckTrue(c.Next);
   var ansUInt64 : TCbor_UInt64 := c.AsUInt64;
   CheckEquals(ansUInt64.aValue, 8972163489172364);
   Check(ansUInt64.aType = cborUnsigned);
 
-  var ansTCborDataItem : TCborDataItem := ansUInt64;
-  CheckEquals(ansTCborDataItem.aValue, '8972163489172364');
-  Check(ansTCborDataItem.aType = cborUnsigned);
+  var a : TCborItem_TBytes := ansUInt64;
+  var b := TBytes.Create($1B, $00, $1F, $E0, $22, $99, $A3, $8B, $8C);;
+  for var i := Low(a.aValue) to High(a.aValue) do
+    CheckEquals(b[i], a.aValue[i]);
+  Check(a.aType = cborUnsigned);
 
-  var ansUInt64_2 : TCbor_UInt64 := ansTCborDataItem;
+  var ansUInt64_2 : TCbor_UInt64 := a;
   CheckEquals(ansUInt64_2.aValue, 8972163489172364);
   Check(ansUInt64_2.aType = cborUnsigned);
 
