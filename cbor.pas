@@ -32,10 +32,10 @@ type
   end;
 
   TCbor_Int64 = record
-    aValue: Int64;
+    aValue: string;
     aType: TCborDataType;
     aIsIndefiniteLength: Boolean;
-    constructor Create(V: Int64);
+    constructor Create(V: string);
     class operator Implicit(cbor: TCborItem_TBytes): TCbor_Int64;
     class operator Implicit(a: TCbor_Int64): TCborItem_TBytes;
   end;
@@ -183,7 +183,7 @@ end;
 function TCbor.AsInt64: TCbor_Int64;
 begin
   Result.aType := DataType;
-  Result.aValue := -1 - AsUInt64.aValue;
+  Result.aValue := Subt('-1', IntToStr(AsUInt64.aValue));
 end;
 
 function TCbor.AsSemanticBigNum: string;
@@ -381,7 +381,7 @@ end;
 
 function Encode_int64(V: TCbor_Int64): TBytes;
 begin
-  Result := Encode_uint64(TCbor_UInt64.Create(-1-V.aValue, V.aType));
+  Result := Encode_uint64(TCbor_UInt64.Create(StrToUInt64(Subt('-1', V.aValue)), V.aType));
 end;
 
 function Encode_byteString(V: TCbor_ByteString): TBytes;
@@ -500,7 +500,7 @@ end;
 
 { TCbor_Int64 }
 
-constructor TCbor_Int64.Create(V: Int64);
+constructor TCbor_Int64.Create(V: string);
 begin
   aValue := V;
   aIsIndefiniteLength := false;
