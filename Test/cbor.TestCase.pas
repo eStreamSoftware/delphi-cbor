@@ -31,6 +31,7 @@ type
 
     procedure Test_UTF8_0;
     procedure Test_UTF8_1;
+    procedure Test_UTF8_2;
     procedure Test_UTF8_31;
     procedure Test_UTF8_31_1;
     procedure Test_UTF8_31_2;
@@ -810,6 +811,18 @@ begin
 
 end;
 
+procedure TTestCase_cbor.Test_UTF8_2;
+begin
+  var c: TCbor := TBytes.Create($62, $22, $5C);
+
+  CheckTrue(c.Next);
+  Check(cborUTF8 = c.DataType);
+  CheckEquals(3, c.DataItemSize);
+  CheckEquals('"\', c.AsUTF8.aValue[0]);
+
+  CheckFalse(c.Next);
+end;
+
 procedure TTestCase_cbor.Test_UTF8_31;
 begin
   var c: TCbor := TBytes.Create(
@@ -954,7 +967,6 @@ begin
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
   var ans := c.AsArray;
-//  var ans : TCbor_Array := [1, 2, 3, 4, 5, 'hi', '乃乇', -22, -222, 1, 2, 300, 600, 900, -1200, 'BTS', 'Go', 'your', 'own', 'way', 'Put', 'weakness', 'away',
   Check(TCbor_UInt64(ans.aValue[0]).aValue = 1);
   Check(TCbor_UInt64(ans.aValue[1]).aValue = 2);
   Check(TCbor_UInt64(ans.aValue[2]).aValue = 3);
