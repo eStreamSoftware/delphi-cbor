@@ -3,7 +3,7 @@ unit cbor;
 interface
 
 uses
-  System.SysUtils, System.Generics.Collections, Winapi.Windows, numbers, System.Math, data.FMTBcd;
+  System.SysUtils, System.Generics.Collections, Winapi.Windows, System.Math, data.FMTBcd, System.Variants;
 
 const
   Map = 5;
@@ -11,22 +11,24 @@ const
 type
   TCborDataType = (cborUnsigned = 0, cborSigned = 1, cborByteString = 2, cborUTF8 = 3, cborArray = 4, cborMap = 5, cborSemantic = 6, cborSpecial = 7);
 
-  TCborSemanticTag = (standardDateTime = 0, EpochDateTime = 1, positiveBigNum = 2, negativeBigNum = 3, decimal = 4, bigFloat = 5);
+  TCborSemanticTag = (standardDateTime = 0, EpochDateTime = 1, positiveBigNum = 2, negativeBigNum = 3, decimal = 4, bigFloat = 5, toBase64url = 21,
+                      encodedCbor = 24, URI = 32, base64url = 33, base64 = 34, regex = 35, mime = 36, selfDescribed = 55799);
+
+  TCborSpecialTag = (cborFalse = 20, cborTrue = 21, cborNull = 22, cborUndefined = 23, cbor16bitFloat = 25, cbor32bitFloat = 26, cbor64bitFloat = 27, cborBreak = 31);
 
   TCborItem = record
   private
-    FIndex: Integer;
     FIsIndefiniteLength: Boolean;
     FValue: TBytes;
     FType: TCborDataType;
   public
     function Value: TBytes;
     function cborType: TCborDataType;
+    class operator Implicit(c: TCborItem): UInt64;
   end;
 
   TCbor_UInt64 = record
   private
-    FIsIndefiniteLength: Boolean;
     FValue: UInt64;
     FType: TCborDataType;
   public
@@ -42,7 +44,6 @@ type
   private
     FValue: Int64;
     FType: TCborDataType;
-    FIsIndefiniteLength: Boolean;
   public
     constructor Create(V: Int64);
 //    constructor Create(V: Int128);
@@ -110,7 +111,35 @@ type
   end;
 
   TCbor_Semantic = record
+  private
+    FValue: TBytes; // TBD
+    FType: TCborDataType;
+    FTag: TCborSemanticTag;
+  public
+    constructor Create(V: TBytes; T: TCborSemanticTag);
+    function Encode_Semantic: TBytes;
+    function Value: TBytes;
+    function cborType: TCborDataType;
+    function Tag: TCborSemanticTag;
+    class operator Implicit(a: TCbor_Semantic): TCborItem;
+    class operator Implicit(cbor: TCborItem): TCbor_Semantic;
+    class operator Implicit(a: TCbor_Semantic): string;
+    class operator Implicit(a: TCbor_Semantic): TBcd;
+  end;
 
+  TCbor_Special = record
+  private
+    FValue: TBytes;
+    FType: TCborDataType;
+    FTag: TCborSpecialTag;
+  public
+    constructor Create(V: TBytes; T: TCborSpecialTag);
+    function Value: TBytes;
+    class operator Implicit(a: TCbor_Special): TCborItem;
+    class operator Implicit(cbor: TCborItem): TCbor_Special;
+    class operator Implicit(a: TCbor_Special): Boolean;
+    class operator Implicit(a: TCbor_Special): Variant;
+    class operator Implicit(a: TCbor_Special): TBcd;
   end;
 
   TCbor = record
@@ -126,8 +155,8 @@ type
     function AsByteString: TCbor_ByteString;
     function AsInt64: TCbor_Int64;
     function AsMap: TCbor_Map;
-    function AsSemantic: Variant;
-    function AsSemanticBigNum: string;
+    function AsSemantic: TCbor_Semantic;
+    function AsSpecial: TCbor_Special;
     function AsUTF8: TCbor_UTF8;
     function AsUInt64: TCbor_UInt64;
     function DataItemSize: UInt64;
@@ -139,6 +168,8 @@ type
   end;
 
 function UInt64ToTBytes(V: UInt64): TBytes;
+function toBinary(dec: Integer): string;
+function pow(base, exp: Int64): TBcd;
 
 implementation
 
@@ -198,39 +229,29 @@ begin
   Result.FIsIndefiniteLength := Length(Result.FValue) > 1;
 end;
 
-function TCbor.AsSemantic: Variant;
+function TCbor.AsSemantic: TCbor_Semantic;
 begin
-  var tag := TCborSemanticTag(DataItemSize);
-  Inc(FIndex);
-  case tag of
-  standardDateTime: ;
-  PositiveBigNum:
-    Result := AsSemanticBigNum;
-  end;
+  Result.FType := DataType;
+
+  if DataItemSize <= 23 then
+    Result.FTag := TCborSemanticTag(DataItemSize)
+  else
+    Result.FTag := TCborSemanticTag(GetLittleEndian(FIndex+1, ExtendedCount));
+
+//  Inc(FIndex);
+//  case DataType of
+//  cborByteString: begin
+//    Result.FValue := AsByteString;
+//  end;
+//  cborUTF8: Result.FValue := AsUTF8;
+
+//  end;
 end;
 
 function TCbor.AsInt64: TCbor_Int64;
 begin
   Result.FType := DataType;
   Result.FValue := -1 - AsUInt64.FValue;
-end;
-
-function TCbor.AsSemanticBigNum: string;
-begin
-  var s := DataItemSize;
-  var e := ExtendedCount;
-  var byteStr: string := '';
-  var toAdd : TArray<string> := TArray<string>.Create();
-  Result := '0';
-
-  if ((DataType = cborByteString) or (DataType = cborUTF8)) then begin       // Should support byte string only or both byte string and UTF8 string?
-    for var i := s-e-1 downto 1 do
-      byteStr := ToBinary(FData[FIndex+e+i]) + byteStr;
-    for var j := 1 to Length(byteStr) do
-      if byteStr[j] = '1' then
-        Result := Add2(Result, Pow('2', Length(byteStr)-j));
-  end
-  else raise Exception.CreateFmt('Unsupported data type: %d', [Byte(DataType)]);
 end;
 
 function TCbor.AsMap: TCbor_Map;
@@ -259,6 +280,17 @@ begin
       Result.FValue := Result.FValue + [TPair<TCborItem, TCborItem>.Create(Key, Value)];
     end;
   end;
+end;
+
+function TCbor.AsSpecial: TCbor_Special;
+begin
+  Result.FValue := FData;
+  Result.FType := DataType;
+
+  if ExtendedCount = 1 then
+    Result.FTag := TCborSpecialTag(FData[FIndex+1])
+  else
+    Result.FTag := TCborSpecialTag(FData[FIndex] and $1F);
 end;
 
 function TCbor.AsUTF8: TCbor_UTF8;
@@ -380,7 +412,6 @@ begin
   var j := 0;
   for var i := Index + Count - 1 downto Index do begin    // Index = FIndex + 1, Count = dataItemSize-1
     R[j] := FData[i];
-    temp := temp + ToBinary(R[j]);
     Inc(j);
   end;
   Move(R[0], Result, Length(R));
@@ -408,12 +439,23 @@ begin
   end;
 end;
 
+function toBinary(dec: Integer): string;
+begin
+  if dec = 0 then Exit('00000000');
+  Result := '';
+  while dec > 0 do begin
+    Result := Chr(Ord('0') + (dec and 1)) + Result;
+    dec := dec shr 1;
+  end;
+  while Length(Result) mod 8 <> 0 do
+    Result := '0' + Result;
+end;
+
 { TCbor_UInt64 }
 
 constructor TCbor_UInt64.Create(V: UInt64; T: TCborDataType = cborUnsigned);
 begin
   FValue := V;
-  FIsIndefiniteLength:= false;
   FType := T;
 end;
 
@@ -443,7 +485,7 @@ end;
 class operator TCbor_UInt64.Implicit(a: TCbor_UInt64): TCborItem;
 begin
   Result.FValue := a.Encode_uint64;
-  Result.FIsIndefiniteLength := a.FIsIndefiniteLength;
+  Result.FIsIndefiniteLength := false;
   Result.FType := a.FType;
 end;
 
@@ -452,7 +494,6 @@ begin
   var d := TCbor.Create(cbor.Value);
   if d.Next then
     Result := d.AsUInt64;
-  Result.FIsIndefiniteLength := false;
 end;
 
 { TCbor_Int64 }
@@ -461,7 +502,6 @@ end;
 constructor TCbor_Int64.Create(V: Int64);
 begin
   FValue := V;
-  FIsIndefiniteLength := false;
   FType := cborSigned;
 end;
 
@@ -484,7 +524,7 @@ class operator TCbor_Int64.Implicit(a: TCbor_Int64): TCborItem;
 begin
   Result.FValue := a.Encode_int64;
   Result.FType := a.FType;
-  Result.FIsIndefiniteLength := a.FIsIndefiniteLength;
+  Result.FIsIndefiniteLength := false;
 end;
 
 class operator TCbor_Int64.Implicit(cbor: TCborItem): TCbor_Int64;
@@ -492,7 +532,6 @@ begin
   var d := TCbor.Create(cbor.Value);
   if d.Next then
     Result := d.AsInt64;
-  Result.FIsIndefiniteLength := False;
 end;
 
 { TCbor_ByteString }
@@ -713,6 +752,11 @@ end;
 
 { TCborItem }
 
+class operator TCborItem.Implicit(c: TCborItem): UInt64;
+begin
+  Result := TCbor(c.FValue).AsUInt64.Value;
+end;
+
 function TCborItem.Value: TBytes;
 begin
   Result := FValue;
@@ -721,6 +765,167 @@ end;
 function TCborItem.cborType: TCborDataType;
 begin
   Result := FType;
+end;
+
+{ TCbor_Semantic }
+
+constructor TCbor_Semantic.Create(V: TBytes; T: TCborSemanticTag);
+begin
+  FValue := V;
+  FTag := T;
+end;
+
+function TCbor_Semantic.Encode_Semantic: TBytes;
+begin
+
+end;
+
+class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): TBcd;
+begin
+
+end;
+
+class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): string;
+begin
+
+end;
+
+function TCbor_Semantic.Value: TBytes;
+begin
+  Result := FValue;
+end;
+
+function TCbor_Semantic.Tag: TCborSemanticTag;
+begin
+  Result:= FTag;
+end;
+
+function TCbor_Semantic.cborType: TCborDataType;
+begin
+  Result := cborType;
+end;
+
+class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): TCborItem;
+begin
+  Result.FValue := a.Encode_Semantic;
+  Result.FType := a.FType;
+  Result.FIsIndefiniteLength := false;
+end;
+
+class operator TCbor_Semantic.Implicit(cbor: TCborItem): TCbor_Semantic;
+begin
+  var a := TCbor(cbor.FValue);
+  if a.Next then
+    Result := a.AsSemantic;
+end;
+
+{ TCbor_Special }
+
+constructor TCbor_Special.Create(V: TBytes; T: TCborSpecialTag);
+begin
+  FValue := V;
+  FTag := T;
+  FType := cborSpecial;
+end;
+
+class operator TCbor_Special.Implicit(cbor: TCborItem): TCbor_Special;
+begin
+  var a := TCbor(cbor.FValue);
+  if a.Next then
+    Result := a.AsSpecial;
+end;
+
+class operator TCbor_Special.Implicit(a: TCbor_Special): TCborItem;
+begin
+  Result.FValue := a.FValue;
+  Result.FType := cborSpecial;
+  Result.FIsIndefiniteLength := false;
+end;
+
+class operator TCbor_Special.Implicit(a: TCbor_Special): Boolean;
+begin
+  if Ord(a.FTag) = 20 then
+    Result := False
+  else if Ord(a.FTag) = 21 then
+    Result := True;
+end;
+
+class operator TCbor_Special.Implicit(a: TCbor_Special): TBcd;
+begin
+  var BinaryStr := '';
+  var strLength, exponentLength: Integer;
+  var exponent: Extended;
+  var mantissa: TBcd := 0;
+
+  case a.FTag of
+    cbor16bitFloat: begin
+      strLength := 16;
+      exponentLength := 5;
+    end;
+    cbor32bitFloat: begin
+      strLength := 32;
+      exponentLength := 8;
+    end;
+    cbor64bitFloat: begin
+      strLength := 64;
+      exponentLength := 11;
+    end;
+  end;
+
+  for var i := 1 to (strLength div 8) do
+    BinaryStr := BinaryStr + ToBinary(a.FValue[i]);
+
+  if BinaryStr[2] = '0' then exponent := 1 - Power(2, exponentLength-1) else exponent := 1;
+  for var i := exponentLength+1 downto 3 do
+    if BinaryStr[i] = '1' then
+      exponent := exponent + Power(2, (exponentLength+1-i));
+
+  for var i := strLength downto exponentLength+2 do begin
+    if BinaryStr[i] = '1' then
+      mantissa := mantissa + power(2, strLength-i);
+  end;
+
+  if (exponent = Power(2, exponentLength-1)) then begin   // Check for positive/negative infinity and NaN
+    if mantissa = 0 then
+      if BinaryStr[1] = '0' then Exit(1.0/0.0)
+      else Exit(-1.0/0.0)
+    else
+      Exit(0.0/0.0);
+  end;
+
+  if exponent = -1*(Power(2, exponentLength-1)-1) then begin
+    if mantissa = 0 then
+      if BinaryStr[1] = '0' then Exit(0)
+      else Exit(-0);
+    exponent := exponent + 1;
+    mantissa := mantissa/Pow(2, strLength-exponentLength-1)
+  end else
+    mantissa := 1 + (mantissa/Pow(2, strLength-exponentLength-1));
+
+  Result := Power(2, exponent) *  mantissa * Power(-1, StrToInt(BinaryStr[1]));
+//  if BinaryStr[1] = '1' then Result := -1 * Result;
+//  if pos(FormatSettings.DecimalSeparator, BcdToStr(Result)) = 0 then
+//    Result := RoundTo(Result, -1);                       // for XX.0
+end;
+
+function pow(base, exp: Int64): TBcd;
+begin
+  Result := 1;
+  while exp > 0 do begin
+  if (exp mod 2) = 1 then Result := Result * base;
+    base := base * base;
+    exp := exp div 2;
+  end;
+end;
+
+class operator TCbor_Special.Implicit(a: TCbor_Special): Variant;
+begin
+  if a.FTag = cborNull then Result := Null;
+end;
+
+function TCbor_Special.Value: TBytes;
+begin
+
 end;
 
 end.

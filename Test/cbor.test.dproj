@@ -158,7 +158,6 @@
         </DelphiCompile>
         <DCCReference Include="cbor.TestCase.pas"/>
         <DCCReference Include="..\cbor.pas"/>
-        <DCCReference Include="numbers.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

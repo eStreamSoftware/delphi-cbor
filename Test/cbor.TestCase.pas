@@ -86,12 +86,48 @@ type
     procedure Test_UInt64ToTBytes_1;
     procedure Test_UInt64ToTBytes_2;
     procedure Test_UInt64ToTBytes_3;
+
+    procedure Test_Special_0;
+    procedure Test_Special_1;
+    procedure Test_Special_2;
+
+    procedure Test_Special_16Bit_0;
+    procedure Test_Special_16Bit_1;
+    procedure Test_Special_16Bit_2;
+    procedure Test_Special_16Bit_3;
+    procedure Test_Special_16Bit_4;
+    procedure Test_Special_16Bit_5;
+    procedure Test_Special_16Bit_6;
+    procedure Test_Special_16Bit_7;
+    procedure Test_Special_16Bit_8;
+    procedure Test_Special_16Bit_9;
+    procedure Test_Special_16Bit_10;
+    procedure Test_Special_16Bit_11;
+
+    procedure Test_Special_32BitFloat_0;
+    procedure Test_Special_32BitFloat_1;
+    procedure Test_Special_32BitFloat_2;
+    procedure Test_Special_32BitFloat_3;
+    procedure Test_Special_32BitFloat_4;
+    procedure Test_Special_32BitFloat_5;
+    procedure Test_Special_32BitFloat_6;
+    procedure Test_Special_32BitFloat_7;
+
+    procedure Test_Special_64BitFloat_0;
+    procedure Test_Special_64BitFloat_1;
+    procedure Test_Special_64BitFloat_2;
+    procedure Test_Special_64BitFloat_3;
+    procedure Test_Special_64BitFloat_4;
+    procedure Test_Special_64BitFloat_5;
+    procedure Test_Special_64BitFloat_6;
+    procedure Test_Special_64BitFloat_7;
   end;
 
 implementation
 
 uses
-  Winapi.Windows, System.Generics.Collections, System.SysUtils,
+  Winapi.Windows, System.Generics.Collections, System.SysUtils, System.Variants,
+  Data.FMTBcd,
   cbor;
 
 procedure TTestCase_cbor.Test_SemanticPositiveBigNum_0;
@@ -1294,6 +1330,329 @@ begin
   CheckEquals(-26, c.AsInt64.Value);
 
   CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_Special_0;
+begin
+  var c: TCbor := TBytes.Create($F4);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  CheckFalse(c.AsSpecial);
+end;
+
+procedure TTestCase_cbor.Test_Special_1;
+begin
+   var c: TCbor := TBytes.Create($F5);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  CheckTrue(c.AsSpecial);
+end;
+
+procedure TTestCase_cbor.Test_Special_2;
+begin
+  var c: TCbor := TBytes.Create($F6);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var d : Variant := c.AsSpecial;
+  Check(d = Null);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_0;
+begin
+  var c: TCbor := TBytes.Create($F9, $3E, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  CheckEquals(0, BcdCompare(1.5, b));
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_1;
+begin
+  var c: TCbor := TBytes.Create($F9, $7C, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(1.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_2;
+begin
+  var c: TCbor := TBytes.Create($F9, $FC, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(-1.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_3;
+begin
+  var c: TCbor := TBytes.Create($F9, $80, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(-0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_4;
+begin
+  var c: TCbor := TBytes.Create($F9, $7E, $02);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(0.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_5;
+begin
+  var c: TCbor := TBytes.Create($F9, $CE, $1F);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  CheckEquals(0, BcdCompare(-24.484375, c.AsSpecial));
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_6;
+begin
+  var c: TCbor := TBytes.Create($F9, $7B, $FF);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(65504.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_7;
+begin
+  var c: TCbor := TBytes.Create($F9, $00, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_8;
+begin
+  var c: TCbor := TBytes.Create($F9, $3C, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b :TBcd := c.AsSpecial;
+  Check(1.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_9;
+begin
+  var c: TCbor := TBytes.Create($F9, $04, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(0.00006103515625 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_10;
+begin
+  var c: TCbor := TBytes.Create($F9, $00, $01);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  var s := BcdToStr(b);
+  CheckEquals(s, '0.000000059604644775390625');
+//  CheckTrue(b = 0.000000059604644775390625);
+//  CheckEquals(0, BcdCompare(b, 0.000000059604644775390625));
+end;
+
+procedure TTestCase_cbor.Test_Special_16Bit_11;
+begin
+  var c: TCbor := TBytes.Create($F9, $C4, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  CheckEquals(0, BcdCompare(-4.0, c.AsSpecial));
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_0;
+begin
+  var c: TCbor := TBytes.Create($FA, $7F, $80, $00, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(1.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_1;
+begin
+  var c: TCbor := TBytes.Create($FA, $FF, $80, $00, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(-1.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_2;
+begin
+  var c: TCbor := TBytes.Create($FA, $7F, $80, $08, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  Check(0.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_3;
+begin
+  var c: TCbor := TBytes.Create($FA, $9E, $8F, $88, $10);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b : TBcd := c.AsSpecial;
+  CheckEquals('-0.0000000000000000000151969880632183667248523602222309847320502740330994129180908203125', BcdToStr(b));
+//  CheckEquals(0, BcdCompare(-0.0000000000000000000151969880632183667248523602222309847320502740330994129180908203125, b));
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_4;
+begin
+   var c: TCbor := TBytes.Create($FA, $52, $E5, $8B, $9C);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var a := c.AsSpecial;
+  var b : TBcd := a;
+  CheckEquals('492944883712.0', BcdToStr(b));
+//  Check(0 = BcdCompare(492944883712.0, b));
+
+//Check(8388608 = pow(2, 23));
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_5;
+begin
+  var c: TCbor := TBytes.Create($FA, $12, $E5, $8B, $9C);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+//  Check(SameValue(1.44863481517551e-2, c.AsSpecial));
+  CheckEquals(0.000000000000000000000000001448634815175513617983697764181463637879541776765091043444044771604239940643310546875, c.AsSpecial);
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_6;
+begin
+  var c: TCbor := TBytes.Create($FA, $47, $C3, $50, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  CheckEquals(100000.0, c.AsSpecial);
+end;
+
+procedure TTestCase_cbor.Test_Special_32BitFloat_7;
+begin
+  var c: TCbor := TBytes.Create($FA, $7F, $7F, $FF, $FF);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  CheckEquals(0, BcdCompare('340282346638528859811704183484516925440', c.AsSpecial));
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_0;
+begin
+  var c: TCbor := TBytes.Create($FB, $40, $09, $21, $FB, $54, $44, $2D, $18);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check('3.141592653589793' = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_1;
+begin
+  var c: TCbor := TBytes.Create($FB, $7F, $F0, $00, $00, $00, $00, $00, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check(1.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_2;
+begin
+  var c: TCbor := TBytes.Create($FB, $FF, $F0, $00, $00, $00, $00, $00, $00);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check(-1.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_3;
+begin
+  var c: TCbor := TBytes.Create($FB, $FF, $F1, $29, $00, $0F, $41, $80, $09);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check(0.0/0.0 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_4;
+begin
+  var c: TCbor := TBytes.Create($FB, $81, $A2, $09, $10, $8E, $05, $D0, $09);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  var ans : TBcd := '-0.00000000000000000000000000000000000000000000000000000000000000000000000000000'
+  + '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+  + '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+  + '000000000000000000000000000000084158954649921470919354930409190165333932896712318500663480181461'
+  + '719627424334755743026253016865991704445867305798258518836357469501720753539830223832719145267936'
+  + '857684371784260064816971573859977505100493559474588966730159633261110315685823077036969329988840'
+  + '653884775780901050705791686569483469040189259994679023644183202678373144404471704770403935135697'
+  + '400244287582025987164089401174368120054720639440782540737833925892432789399116756122882070587257'
+  + '544807530257568519586687372318348576567329345198016672165758192688428112672941524829975161383474'
+  + '818007219799618770869205307770087375393459198451970085272327109125318612594569114142214157756215'
+  + '789141198113620441923344539649116050512419282005563472768041907820686653440844793294672854244709014892578125';
+  Check(ans = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_5;
+begin
+  var c: TCbor := TBytes.Create($FB, $3F, $F1, $99, $99, $99, $99, $99, $9A);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check(1.1 = b);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_6;
+begin
+  var c: TCbor := TBytes.Create($FB, $7E, $37, $E4, $3C, $88, $00, $75, $9C);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check('1000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160' = BcdToStr(b));
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_7;
+begin
+  var c: TCbor := TBytes.Create($FB, $C0, $10, $66, $66, $66, $66, $66, $66);
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  var b: TBcd := c.AsSpecial;
+  Check(-4.1 = b);
 end;
 
 procedure TTestCase_cbor.Test_Unsigned_0;
