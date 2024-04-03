@@ -3,7 +3,7 @@ unit cbor;
 interface
 
 uses
-  System.SysUtils, System.Generics.Collections, Winapi.Windows, System.Math, data.FMTBcd, System.Variants;
+  System.SysUtils, System.Generics.Collections, Winapi.Windows, System.Math, data.FMTBcd, System.Variants, System.NetEncoding;
 
 const
   Map = 5;
@@ -24,7 +24,9 @@ type
   public
     function Value: TBytes;
     function cborType: TCborDataType;
-    class operator Implicit(c: TCborItem): UInt64;
+    class operator Implicit(a: TCborItem): UInt64;  // ambiguous overloaded call
+    class operator Implicit(a: TCborItem): Int64;   // ambiguous overloaded call
+//    class operator Implicit(a: TCborItem): string;
   end;
 
   TCbor_UInt64 = record
@@ -38,6 +40,7 @@ type
     function cborType: TCborDataType;
     class operator Implicit(a: TCbor_UInt64): TCborItem;
     class operator Implicit(cbor: TCborItem): TCbor_UInt64;
+    class operator Implicit(a: TCbor_UInt64): UInt64;
   end;
 
   TCbor_Int64 = record
@@ -52,6 +55,7 @@ type
     function cborType: TCborDataType;
     class operator Implicit(cbor: TCborItem): TCbor_Int64;
     class operator Implicit(a: TCbor_Int64): TCborItem;
+    class operator Implicit(a: TCbor_Int64): Int64;
   end;
 
   TCbor_ByteString = record
@@ -66,6 +70,7 @@ type
     function cborType: TCborDataType;
     class operator Implicit(cbor: TCborItem): TCbor_ByteString;
     class operator Implicit(a: TCbor_ByteString): TCborItem;
+    class operator Implicit(a: TCbor_ByteString): string;
   end;
 
   TCbor_UTF8 = record
@@ -80,6 +85,7 @@ type
     function cborType: TCborDataType;
     class operator Implicit(a: TCbor_UTF8): TCborItem;
     class operator Implicit(cbor: TCborItem): TCbor_UTF8;
+    class operator Implicit(a: TCbor_UTF8): string;
   end;
 
   TCbor_Array = record
@@ -125,6 +131,8 @@ type
     class operator Implicit(cbor: TCborItem): TCbor_Semantic;
     class operator Implicit(a: TCbor_Semantic): string;
     class operator Implicit(a: TCbor_Semantic): TBcd;
+    class operator Implicit(a: TCbor_Semantic): UInt64;
+    class operator Implicit(a: TCbor_Semantic): Int64;
   end;
 
   TCbor_Special = record
@@ -140,6 +148,7 @@ type
     class operator Implicit(a: TCbor_Special): Boolean;
     class operator Implicit(a: TCbor_Special): Variant;
     class operator Implicit(a: TCbor_Special): TBcd;
+    class operator Implicit(a: TCbor_Special): string;
   end;
 
   TCbor = record
@@ -169,7 +178,7 @@ type
 
 function UInt64ToTBytes(V: UInt64): TBytes;
 function toBinary(dec: Integer): string;
-function pow(base, exp: Int64): TBcd;
+function pow(base, exp: TBcd): TBcd;
 
 implementation
 
@@ -233,10 +242,18 @@ function TCbor.AsSemantic: TCbor_Semantic;
 begin
   Result.FType := DataType;
 
-  if DataItemSize <= 23 then
-    Result.FTag := TCborSemanticTag(DataItemSize)
+  if FData[FIndex] and $1F <= 23 then
+    Result.FTag := TCborSemanticTag(FData[FIndex] and $1F)
   else
     Result.FTag := TCborSemanticTag(GetLittleEndian(FIndex+1, ExtendedCount));
+
+//  var temp := TCbor.Create(Copy(FData, 1 + ExtendedCount, )
+//  var totalSize := 1 + ExtendedCount +
+
+  Result.FValue := FData; // need to calculate length later
+                          // same for as special function
+
+  // calculate here or calculate in the data item size function?
 
 //  Inc(FIndex);
 //  case DataType of
@@ -342,11 +359,17 @@ begin
          Inc(Result, GetLittleEndian(FIndex + 1, ExtendedCount) + ExtendedCount);
     end;
     cborSemantic: begin
-      Result := i;
+//      Result := i;
+      var n := FIndex;
+
     end;
     cborSpecial: begin
-      if i = 31 then Result := 1
-      // TODO: other special cases
+      if (i = 31) or (i <= 23) then
+        Result := 1
+      else if (i = 24) or (i = 25) or (i = 26) or (i = 27) then
+        Inc(Result, ExtendedCount)
+      else
+        raise Exception.CreateFmt('Unknown additional information', [i]);
     end
     else
       raise Exception.CreateFmt('Unsupported data type: %d', [Byte(DataType)]);
@@ -496,6 +519,11 @@ begin
     Result := d.AsUInt64;
 end;
 
+class operator TCbor_UInt64.Implicit(a: TCbor_UInt64): UInt64;
+begin
+  Result := a.Value;
+end;
+
 { TCbor_Int64 }
 
 
@@ -532,6 +560,11 @@ begin
   var d := TCbor.Create(cbor.Value);
   if d.Next then
     Result := d.AsInt64;
+end;
+
+class operator TCbor_Int64.Implicit(a: TCbor_Int64): Int64;
+begin
+  Result := a.Value;
 end;
 
 { TCbor_ByteString }
@@ -591,6 +624,18 @@ begin
 end;
 
 
+class operator TCbor_ByteString.Implicit(a: TCbor_ByteString): string;
+begin
+  if not a.FIsIndefiniteLength then
+    Exit(a.Value[0]);
+
+  Result := '(_ ';
+  for var i := 0 to Length(a.Value) - 2 do
+    Result := Result + a.Value[i] + ', ';
+
+  Result := Result + a.Value[Length(a.Value) - 1] + ')';
+end;
+
 { TCbor_UTF8 }
 
 constructor TCbor_UTF8.Create(V: TArray<string>);
@@ -645,6 +690,18 @@ begin
   var d := TCbor.Create(cbor.FValue);
   if d.Next then
     Result := d.AsUTF8;
+end;
+
+class operator TCbor_UTF8.Implicit(a: TCbor_UTF8): string;
+begin
+  if not a.FIsIndefiniteLength then
+    Exit(a.Value[0]);
+
+  Result := '(';
+  for var i := 0 to Length(a.Value) - 2 do
+    Result := Result + a.Value[i] + ', ';
+
+  Result := Result + a.Value[Length(a.Value) - 1] + ')';
 end;
 
 { TCbor_Array }
@@ -752,9 +809,28 @@ end;
 
 { TCborItem }
 
-class operator TCborItem.Implicit(c: TCborItem): UInt64;
+class operator TCborItem.Implicit(a: TCborItem): UInt64;
 begin
-  Result := TCbor(c.FValue).AsUInt64.Value;
+  var c := TCbor.Create(a.FValue);
+  if c.Next and (a.cborType = cborUnsigned) then
+    Result := c.AsUInt64.Value;
+end;
+
+//class operator TCborItem.Implicit(a: TCborItem): string;
+//begin
+//  var c := TCbor.Create(a.FValue);
+//  if c.Next then
+//    if a.cborType = cborByteString then
+//      Result := c.AsByteString
+//    else
+//      Result := c.AsUTF8;
+//end;
+
+class operator TCborItem.Implicit(a: TCborItem): Int64;
+begin
+  var c := TCbor.Create(a.FValue);
+  if c.Next and (a.cborType = cborSigned) then
+    Result := c.AsInt64.Value;
 end;
 
 function TCborItem.Value: TBytes;
@@ -777,17 +853,56 @@ end;
 
 function TCbor_Semantic.Encode_Semantic: TBytes;
 begin
-
+  Result:= FValue;
 end;
 
 class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): TBcd;
 begin
+  // for decimal and big float
+  var base : Integer;
+  if a.FTag = decimal then
+    base := 10
+  else if a.FTag = bigFloat then
+    base := 2
+  else raise Exception.CreateFmt('Unsupported tag: %d', [Ord(a.FTag)]);
 
+  var c := TCbor.Create(Copy(a.Value, 1, Length(a.Value) - 1));
+  var arr : TArray<TCborItem>;
+  if c.Next then arr := c.AsArray.FValue;
+
+  var arrInt64 := TArray<Int64>.Create();
+  for var i := 0 to 1 do
+    if arr[i].cborType = cborUnsigned then
+      arrInt64 := arrInt64 + [TCbor_UInt64(arr[i]).Value]
+    else if arr[i].cborType = cborSigned then
+      arrInt64 := arrInt64 + [TCbor_Int64(arr[i]).Value];
+
+  if arrInt64[0] = 0 then
+    Exit(arrInt64[1]);
+
+  Result := arrInt64[1] * Power(base, arrInt64[0]);
 end;
 
 class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): string;
 begin
+  var c : TCbor;
+  if (a.Value[0] and $1F) <= 23 then
+    c := TCbor.Create(Copy(a.Value, 1, Length(a.Value) - 1))
+  else begin
+    var t := TCbor.Create(a.Value);
+    if t.Next then
+      c := TCbor.Create(Copy(a.Value, t.ExtendedCount + 1, Length(a.Value) - t.ExtendedCount - 1));
+  end;
 
+  if not c.Next then raise Exception.Create('No data load');
+
+  if c.DataType = cborByteString then
+    Result := c.AsByteString.Value[0]
+  else if c.DataType = cborUTF8 then begin
+    Result := c.AsUTF8.Value[0];
+    if (a.Tag = base64url) or (a.Tag = base64) then
+      Result := TBase64Encoding.Base64String.Decode(Result);
+  end;
 end;
 
 function TCbor_Semantic.Value: TBytes;
@@ -819,6 +934,20 @@ begin
     Result := a.AsSemantic;
 end;
 
+class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): Int64;
+begin
+  var c := TCbor.Create(Copy(a.Value, 1, Length(a.Value)-1));
+  if c.Next then
+    Result := c.AsInt64.Value;
+end;
+
+class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): UInt64;
+begin
+  var c := TCbor.Create(Copy(a.Value, 1, Length(a.Value)-1));
+  if c.Next then
+    Result := c.AsUInt64.Value;
+end;
+
 { TCbor_Special }
 
 constructor TCbor_Special.Create(V: TBytes; T: TCborSpecialTag);
@@ -847,14 +976,16 @@ begin
   if Ord(a.FTag) = 20 then
     Result := False
   else if Ord(a.FTag) = 21 then
-    Result := True;
+    Result := True
+  else
+    raise Exception.Create('Tag unmatched.');
 end;
 
 class operator TCbor_Special.Implicit(a: TCbor_Special): TBcd;
 begin
   var BinaryStr := '';
   var strLength, exponentLength: Integer;
-  var exponent: Extended;
+  var exponent: Extended := 0;
   var mantissa: TBcd := 0;
 
   case a.FTag of
@@ -875,10 +1006,10 @@ begin
   for var i := 1 to (strLength div 8) do
     BinaryStr := BinaryStr + ToBinary(a.FValue[i]);
 
-  if BinaryStr[2] = '0' then exponent := 1 - Power(2, exponentLength-1) else exponent := 1;
-  for var i := exponentLength+1 downto 3 do
+  for var i := exponentLength+1 downto 2 do
     if BinaryStr[i] = '1' then
       exponent := exponent + Power(2, (exponentLength+1-i));
+  exponent := exponent - (Power(2, (exponentLength - 1)) - 1);
 
   for var i := strLength downto exponentLength+2 do begin
     if BinaryStr[i] = '1' then
@@ -892,30 +1023,51 @@ begin
     else
       Exit(0.0/0.0);
   end;
-
   if exponent = -1*(Power(2, exponentLength-1)-1) then begin
     if mantissa = 0 then
       if BinaryStr[1] = '0' then Exit(0)
       else Exit(-0);
     exponent := exponent + 1;
-    mantissa := mantissa/Pow(2, strLength-exponentLength-1)
+    mantissa := mantissa / Double(Pow(2, strLength-exponentLength-1));
   end else
-    mantissa := 1 + (mantissa/Pow(2, strLength-exponentLength-1));
+    mantissa := 1 + mantissa / Double(Pow(2, strLength-exponentLength-1));
 
-  Result := Power(2, exponent) *  mantissa * Power(-1, StrToInt(BinaryStr[1]));
-//  if BinaryStr[1] = '1' then Result := -1 * Result;
+  var p1 := Power(2, exponent);
+  var p2 := BcdToStr(Pow(2, exponent));
+
+  var r1 := Power(2, exponent) * mantissa * Power(-1, StrToInt(BinaryStr[1]));
+  var r2 := BcdToStr(Pow(2, exponent) * mantissa * Pow(-1, StrToInt(BinaryStr[1])));
+
+  Result := Power(2, exponent) * mantissa * Power(-1, StrToInt(BinaryStr[1]));
+
+  var rs := BcdToStr(Result);
 //  if pos(FormatSettings.DecimalSeparator, BcdToStr(Result)) = 0 then
 //    Result := RoundTo(Result, -1);                       // for XX.0
+
+//  if Result.SignSpecialPlaces = 0 then begin
+//    NormalizeBcd(Result, Result, Result.Precision + 1, 1);
+//    Result := BcdRoundTo(Result, -1);
+//  end;
 end;
 
-function pow(base, exp: Int64): TBcd;
+function pow(base, exp: TBcd): TBcd;
 begin
   Result := 1;
-  while exp > 0 do begin
-  if (exp mod 2) = 1 then Result := Result * base;
+  if exp = 0 then exit;
+  var isNegative : Boolean := exp < 0;
+  if exp < 0 then exp := exp * -1;
+  while exp <> 0 do begin
+  var s := BcdToStr(exp);
+  if (StrToInt(s[Length(s)]) mod 2) = 1 then Result := Result * base;
     base := base * base;
-    exp := exp div 2;
+    BcdDivide(s, 2, exp);
+    NormalizeBcd(exp, exp, MaxFMTBcdDigits, 0);
   end;
+  if isNegative then
+    Result := 1/Result;
+
+  // Int overflow
+  // need to use int128 or tbcd
 end;
 
 class operator TCbor_Special.Implicit(a: TCbor_Special): Variant;
@@ -925,7 +1077,17 @@ end;
 
 function TCbor_Special.Value: TBytes;
 begin
+  Result := FValue;
+end;
 
+class operator TCbor_Special.Implicit(a: TCbor_Special): string;
+begin
+  if (a.Value[0] and $1F) < 23 then
+    Result := 'simple(' + IntToStr(a.Value[0] and $1F) + ')'
+  else if (a.Value[0] and $1F) = 23 then
+    Result := 'undefined'
+  else
+    Result := 'simple(' + IntToStr(a.Value[1]) + ')';
 end;
 
 end.
