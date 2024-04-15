@@ -29,6 +29,7 @@ type
     procedure Test_ByteString_4;
     procedure Test_ByteString_5;
     procedure Test_ByteString_6;
+    procedure Test_ByteString_7;
     procedure Test_ByteString_31;
 
     procedure Test_UTF8_0;
@@ -37,21 +38,23 @@ type
     procedure Test_UTF8_31;
     procedure Test_UTF8_31_1;
     procedure Test_UTF8_31_2;
+    procedure Test_UTF8_31_3;
+    procedure Test_UTF8_31_4;
     procedure Test_UTF8_31_255;
 
     procedure Test_Array_0;
     procedure Test_Array_1;
     procedure Test_Array_2;
+    procedure Test_Array_3;
     procedure Test_Array_24;
     procedure Test_Array_31;
+    procedure Test_Array_31_1;
 
     procedure Test_Map_0;
     procedure Test_Map_1;
     procedure Test_Map_2;
     procedure Test_Map_24;
     procedure Test_Map_31;
-
-    procedure Test_SemanticPositiveBigNum_0;
 
     procedure Test_EncodeUInt64_0;
     procedure Test_EncodeUInt64_1;
@@ -61,7 +64,6 @@ type
 
     procedure Test_EncodeInt64_0;
     procedure Test_EncodeInt64_1;
-    procedure Test_EncodeInt64_2;
     procedure Test_TCborInt64_0;
 
     procedure Test_EncodeByteString_0;
@@ -82,11 +84,6 @@ type
     procedure Test_EncodeMap_1;
     procedure Test_EncodeMap_2;
 
-    procedure Test_UInt64ToTBytes_0;
-    procedure Test_UInt64ToTBytes_1;
-    procedure Test_UInt64ToTBytes_2;
-    procedure Test_UInt64ToTBytes_3;
-
     procedure Test_SemanticDecimal_0;
     procedure Test_SemanticDecimal_1;
     procedure Test_SemanticDecimal_2;
@@ -99,6 +96,9 @@ type
     procedure Test_SemanticBigFloat_3;
 
     procedure Test_SemanticString_0;
+    procedure Test_SemanticEpochDate_0;
+    procedure Test_SemanticEpochDate_1;
+    Procedure Test_SemanticEpochData_2;
 
     procedure Test_SemanticBase64Url_0;
     procedure Test_SemanticBase64Url_1;
@@ -145,6 +145,7 @@ type
     procedure Test_Special_64BitFloat_5;
     procedure Test_Special_64BitFloat_6;
     procedure Test_Special_64BitFloat_7;
+    procedure Test_Special_64BitFloat_8;
   end;
 
 implementation
@@ -154,198 +155,259 @@ uses
   Data.FMTBcd,
   cbor;
 
-procedure TTestCase_cbor.Test_SemanticPositiveBigNum_0;
-begin
-  var c : TCbor := TBytes.Create(
-    $C2, $45, $01, $00, $70, $A0, $23
-  );
-
-  CheckTrue(c.Next);
-  Check(cborSemantic = c.DataType);
-  var ans := c.AsSemantic;
-end;
-
 procedure TTestCase_cbor.Test_SemanticString_0;
 begin
-  var c: TCbor := TBytes.Create(
-    $c0, $74, $32, $30, $31, $33, $2d, $30, $33, $2d, $32, $31, $54, $32, $30, $3a,
-    $30, $34, $3a, $30, $30, $5a
-  );
+  var c: TCbor := [$c0, $74, $32, $30, $31, $33, $2d, $30, $33, $2d, $32, $31, $54, $32, $30, $3a,
+      $30, $34, $3a, $30, $30, $5a];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(22, c.DataItemSize);
   CheckEquals('2013-03-21T20:04:00Z', c.AsSemantic);
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_SemanticEpochDate_0;
+begin
+  var c: TCbor := [$c1, $1a, $51, $4b, $67, $b0];
+
+  CheckTrue(c.Next);
+  Check(cborSemantic = c.DataType);
+  CheckEquals(6, c.DataItemSize);
+  Check(EpochDateTime = c.AsSemantic.Tag);
+  var i : UInt64 := c.AsSemantic;
+  CheckEquals(1363896240, i);
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_SemanticEpochDate_1;
+begin
+  var c: TCbor := [$c1, $fb, $41, $d4, $52, $d9, $ec, $20, $00, $00];
+
+  CheckTrue(c.Next);
+  Check(cborSemantic = c.DataType);
+  CheckEquals(10, c.DataItemSize);
+  Check(EpochDateTime = c.AsSemantic.Tag);
+  CheckEquals(1363896240.5, c.AsSemantic);
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_SemanticEpochData_2;
+begin
+  var c: TCbor := [$C1, $3B, $00, $00, $00, $17, $D3, $D8, $5D, $2C];
+
+  CheckTrue(c.Next);
+  Check(cborSemantic = c.DataType);
+  CheckEquals(10, c.DataItemSize);
+  var ans := c.AsSemantic;
+  Check(EpochDateTime = ans.Tag);
+  CheckEquals(-102338420013, ans);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBase64Url_0;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $D8, $21, $78, $18, $64, $33, $64, $33, $4C, $6E, $52, $6F, $61, $58, $4E, $70,
     $63, $32, $46, $31, $63, $6D, $77, $75, $59, $32, $39, $74
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(28, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64url = ans.Tag);
   CheckEquals('www.thisisaurl.com', ans);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBase64Url_1;
 begin
-   var c: TCbor := TBytes.Create(
+   var c: TCbor := [
     $D8, $21, $78, $1E, $64, $33, $64, $33, $4C, $6D, $56, $34, $59, $57, $31, $77,
     $62, $47, $56, $31, $63, $6D, $78, $6F, $59, $57, $68, $68, $4C, $6D, $4E, $76,
     $62, $51
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(34, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64url = ans.Tag);
   CheckEquals('www.exampleurlhaha.com', ans);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBase64_0;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $D8, $22, $78, $1C, $53, $47, $56, $73, $62, $47, $38, $67, $56, $32, $39, $79,
-    $62, $47, $51, $67, $52, $58, $68, $68, $62, $58, $42, $73, $5A, $51, $3D, $3D
-  );
+    $62, $47, $51, $67, $52, $58, $68, $68, $62, $58, $42, $73, $5A, $51, $3D, $3D,
+    $D8, $22, $6C, $52, $47, $56, $73, $63, $47, $68, $70, $49, $44, $45, $79
+  ];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(32, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64 = ans.Tag);
   CheckEquals('Hello World Example', ans);
+
+  CheckTrue(c.Next);
+  Check(cborSemantic = c.DataType);
+  CheckEquals(15, c.DataItemSize);
+  var ans2 := c.AsSemantic;
+  Check(base64 = ans2.Tag);
+  CheckEquals('Delphi 12', ans2);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBase64_1;
 begin
-  var c: TCbor := TBytes.Create($D8, $22, $6C, $52, $47, $56, $73, $63, $47, $68, $70, $49, $44, $45, $79);
+  var c: TCbor := [$D8, $22, $6C, $52, $47, $56, $73, $63, $47, $68, $70, $49, $44, $45, $79];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(15, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64 = ans.Tag);
   CheckEquals('Delphi 12', ans);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBigFloat_0;
 begin
-  var c: TCbor := TBytes.Create($C5, $82, $21, $19, $6A, $B3);
+  var c: TCbor := [$C5, $82, $21, $19, $6A, $B3];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(6, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(6828.75 = TBcd(ans));
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBigFloat_1;
 begin
-  var c: TCbor := TBytes.Create($C5, $82, $20, $03);
+  var c: TCbor := [$C5, $82, $20, $03];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(4, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(1.5 = TBcd(ans));           // 5([-1, 3])
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBigFloat_2;
 begin
-   var c: TCbor := TBytes.Create($C5, $82, $14, $1A, $02, $42, $25, $E9);
+   var c: TCbor := [$C5, $82, $14, $1A, $02, $42, $25, $E9];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(8, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(39730033983488 = TBcd(ans));
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticBigFloat_3;
 begin
-  var c: TCbor := TBytes.Create($C5, $82, $33, $1B, $00, $00, $00, $0F, $CB, $D9, $5C, $A3);
+  var c: TCbor := [$C5, $82, $33, $1B, $00, $00, $00, $0F, $CB, $D9, $5C, $A3];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(12, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(64701.58511638641 = TBcd(ans));            // 5([-20, 67844529315])
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticDecimal_0;
 begin
-  var c: TCbor := TBytes.Create($C4, $82, $21, $19, $6A, $B3);
+  var c: TCbor := [$C4, $82, $21, $19, $6A, $B3];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(6, c.DataItemSize);
   var ans := c.AsSemantic;
   var d : TBcd := ans;
   Check(273.15 = d);         //  4(-2, 27315)
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticDecimal_1;
 begin
-  var c: TCbor := TBytes.Create($C4, $82, $18, $64, $00);
+  var c: TCbor := [$C4, $82, $18, $64, $00];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(5, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(0 = TBcd(ans));            // 4([100, 0])
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticDecimal_2;
 begin
-  var c: TCbor := TBytes.Create($C4, $82, $39, $02, $25, $00);
+  var c: TCbor := [$C4, $82, $39, $02, $25, $00];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(6, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(0 = TBcd(ans));     // 4([-550, 0])
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticDecimal_3;
 begin
-  var c: TCbor := TBytes.Create($C4, $82, $07, $1A, $00, $02, $5A, $0A);
+  var c: TCbor := [$C4, $82, $07, $1A, $00, $02, $5A, $0A];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(8, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(1541220000000 = TBcd(ans));      // 4([7, 154122])
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_SemanticDecimal_4;
 begin
-  var c: TCbor := TBytes.Create($C4, $82, $00, $18, $64);
+  var c: TCbor := [$C4, $82, $00, $18, $64];
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
+  CheckEquals(5, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(100 = TBcd(ans));      // 4([0, 100])
 
-//  CheckFalse(c.Next);
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Signed_128;
 begin
-  var c: TCBor := TBytes.Create($3B, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF);
+  var c: TCBor := [$3B, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF];
 
   CheckTrue(c.Next);
   Check(cborSigned = c.DataType);
+  CheckEquals(9, c.DataItemSize);
   CheckEquals(-1, c.AsInt64.Value);
   // ans = -18446744073709551615
   // overflow
@@ -353,7 +415,7 @@ end;
 
 procedure TTestCase_cbor.Test_Signed_16;
 begin
-  var c: TCbor := TBytes.Create($39, $d2, $6f, $39, $0a, $0f);
+  var c: TCbor := [$39, $d2, $6f, $39, $0a, $0f];
 
   CheckTrue(c.Next);
   Check(cborSigned = c.DataType);
@@ -368,41 +430,9 @@ begin
   CheckFalse(c.Next);
 end;
 
-procedure TTestCase_cbor.Test_UInt64ToTBytes_0;
-begin
-  var u := TBytes.Create($30, $3B);
-  var d := UInt64ToTBytes(12347);
-  for var i := 0 to Length(u)-1 do
-    Check(u[i] = d[i]);
-end;
-
-procedure TTestCase_cbor.Test_UInt64ToTBytes_1;
-begin
-  var u := TBytes.Create($22, $D4, $45, $3D);
-  var d := UInt64ToTBytes(584336701);
-  for var i := 0 to Length(u)-1 do
-    Check(u[i] = d[i]);
-end;
-
-procedure TTestCase_cbor.Test_UInt64ToTBytes_2;
-begin
-  var u := TBytes.Create($08, $1B, $FB, $22, $41, $FC, $FF, $B7);
-  var d := UInt64ToTBytes(584336701229170615);
-  for var i := 0 to Length(u)-1 do
-    Check(u[i] = d[i]);
-end;
-
-procedure TTestCase_cbor.Test_UInt64ToTBytes_3;
-begin
-  var u := TBytes.Create($17);
-  var d := UInt64ToTBytes(23);
-  for var i := 0 to Length(u)-1 do
-    Check(u[i] = d[i]);
-end;
-
 procedure TTestCase_cbor.Test_ByteString_0;
 begin
-  var c: TCbor := TBytes.Create($4b, $48, $65, $6c, $6c, $6f, $20, $57, $6f, $72, $6c, $64);
+  var c: TCbor := [$4b, $48, $65, $6c, $6c, $6f, $20, $57, $6f, $72, $6c, $64];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -414,7 +444,7 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_1;
 begin
-  var c: TCbor := TBytes.Create($56, $41, $42, $43, $20, $44, $46, $0D, $0A, $4A, $4B, $20, $69, $73, $20, $74, $68, $65, $20, $62, $65, $73, $74);
+  var c: TCbor := [$56, $41, $42, $43, $20, $44, $46, $0D, $0A, $4A, $4B, $20, $69, $73, $20, $74, $68, $65, $20, $62, $65, $73, $74];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -429,7 +459,7 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_2;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $58, $F5, $49, $6E, $20, $74, $68, $65, $20, $62, $65, $67, $69, $6E, $6E, $69
   , $6E, $67, $20, $47, $6F, $64, $20, $63, $72, $65, $61, $74, $65, $64, $20, $74
   , $68, $65, $20, $68, $65, $61, $76, $65, $6E, $73, $20, $61, $6E, $64, $20, $74
@@ -446,7 +476,7 @@ begin
   , $65, $74, $20, $74, $68, $65, $72, $65, $20, $62, $65, $20, $6C, $69, $67, $68
   , $74, $2C, $20, $61, $6E, $64, $20, $74, $68, $65, $72, $65, $20, $77, $61, $73
   , $20, $6C, $69, $67, $68, $74, $2E
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -464,7 +494,7 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_3;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $59, $03, $AD, $4C, $6F, $72, $65, $6D, $20, $69, $70, $73, $75, $6D, $20, $64,
     $6F, $6C, $6F, $72, $20, $73, $69, $74, $20, $61, $6D, $65, $74, $2C, $20, $63,
     $6F, $6E, $73, $65, $63, $74, $65, $74, $75, $72, $20, $61, $64, $69, $70, $69,
@@ -532,7 +562,7 @@ begin
     $74, $65, $67, $65, $72, $20, $71, $75, $69, $73, $20, $73, $65, $6D, $20, $71,
     $75, $69, $73, $20, $74, $65, $6C, $6C, $75, $73, $20, $66, $61, $75, $63, $69,
     $62, $75, $73, $20, $74, $65, $6D, $70, $6F, $72, $2E
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -556,10 +586,10 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_4;
 begin
-  var c : TCbor := TBytes.Create(
+  var c : TCbor := [
     $57, $49, $6E, $74, $65, $67, $65, $72, $20, $71, $75, $69, $73, $20, $73, $65,
     $6D, $20, $71, $75, $69, $73, $74, $2E
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -572,9 +602,7 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_5;
 begin
-  var c : TCbor := TBytes.Create(
-    $44, $01, $02, $03, $04
-  );
+  var c : TCbor := [$44, $01, $02, $03, $04];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -586,16 +614,17 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_6;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $5F, $44, $68, $69, $68, $69, $43, $42, $54, $53, $4B, $68, $45, $4C, $6C, $6F,
     $20, $77, $30, $72, $4C, $64, $5F, $45, $68, $65, $6C, $6C, $6F, $42, $30, $31,
     $FF, $FF
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
+  CheckEquals(34, c.DataItemSize);
   var d := c.AsByteString;
-  CheckEquals('(_ hihi, BTS, hELlo w0rLd, hello, 01)', d);
+  CheckEquals('(_ ''hihi'', ''BTS'', ''hELlo w0rLd'', ''hello01'')', d);
 
   var ans : TArray<string> := d.Value;
   CheckEquals('hihi', ans[0]);
@@ -603,7 +632,32 @@ begin
   CheckEquals('hELlo w0rLd', ans[2]);
   CheckEquals('hello01', ans[3]);
   // Expected ans := (_ 'hihi', 'BTS', 'hELlo w0rLd', 'hello01')
-  // Nested Indefinite Length
+  // Nested Indefinite Length byte string
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_ByteString_7;
+begin
+  var c: TCbor := [
+    $5F, $45, $68, $65, $6C, $6C, $6F, $43, $31, $32, $33, $5F, $45, $68, $65, $6C,
+    $6C, $6F, $43, $31, $32, $33, $5F, $45, $68, $65, $6C, $6C, $6F, $43, $31, $32,
+    $33, $FF, $FF, $FF
+  ];
+
+  CheckTrue(c.Next);
+  Check(cborByteString = c.DataType);
+  CheckEquals(36, c.DataItemSize);
+  var d := c.AsByteString;
+  CheckEquals('(_ ''hello'', ''123'', ''hello123hello123'')', d);
+
+  var ans : TArray<string> := d.Value;
+  CheckEquals('hello', ans[0]);
+  CheckEquals('123', ans[1]);
+  CheckEquals('hello123hello123', ans[2]);
+  // Nested Nested Indefinite Length byte string
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_EncodeUInt64_0;
@@ -647,7 +701,7 @@ end;
 
 procedure TTestCase_cbor.Test_TborUInt64_0;
 begin
-  var c: TCbor := TBytes.Create($01);
+  var c: TCbor := [$01];
 
   CheckTrue(c.Next);
   var ansUInt64 : TCbor_UInt64 := c.AsUInt64;
@@ -721,10 +775,10 @@ begin
   var arr: TArray<TCborItem> := [TCbor_Uint64.Create(1)] + [TCbor_UTF8.Create(['lol'])]
               + [TCbor_Array.Create(arrNested, false)] + [TCbor_Int64.Create(-999)];
 
-  var d  := TBytes.Create(
+  var d  := [
     $9F, $01, $63, $6C, $6F, $6C, $83, $19, $02, $2B, $5F, $46, $4E, $65, $73, $74,
     $65, $64, $45, $61, $72, $72, $61, $59, $FF, $A1, $06, $06, $39, $03, $E6, $FF
-  );
+  ];
   var f := TCbor_Array.Create(arr, true);
   var e := f.Encode_Array;
   for var i := Low(d) to High(d) do
@@ -749,15 +803,6 @@ begin
   var ans := TBytes.Create($3B, $00, $00, $00, $2E, $7F, $95, $AD, $1D);
   for var i := 0 to Length(ans)-1 do
     CheckEquals(ans[i], d[i]);
-end;
-
-procedure TTestCase_cbor.Test_EncodeInt64_2;
-begin
-//  var c:= TCbor_Int64.Create(-18446744073709551615);
-//  var d := c.Encode_int64;
-//  var ans := TBytes.Create($3B, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF);
-//  for var i := 0 to Length(ans)-1 do
-//    CheckEquals(ans[i], d[i]);
 end;
 
 procedure TTestCase_cbor.Test_EncodeMap_0;
@@ -825,7 +870,7 @@ end;
 
 procedure TTestCase_cbor.Test_TCborInt64_0;
 begin
-  var c: TCbor := TBytes.Create($39, $d2, $6f);
+  var c: TCbor := [$39, $d2, $6f];
 
   CheckTrue(c.Next);
   var ansInt64 : TCbor_Int64 := c.AsInt64;
@@ -929,7 +974,7 @@ end;
 
 procedure TTestCase_cbor.Test_TCborUTF8_0;
 begin
-  var c: TCbor := TBytes.Create($62, $C3, $BC);
+  var c: TCbor := [$62, $C3, $BC];
 
   CheckTrue(c.Next);
   var ansUTF8 : TCbor_UTF8 := c.AsUTF8;
@@ -951,7 +996,7 @@ end;
 
 procedure TTestCase_cbor.Test_ByteString_31;
 begin
-   var c : TCbor := TBytes.Create(
+   var c : TCbor := [
     $5F, $44, $68, $69, $68, $69, $43, $42, $54, $53, $58, $79, $4D, $61, $65, $63,
     $65, $6E, $61, $73, $20, $66, $65, $72, $6D, $65, $6E, $74, $75, $6D, $20, $75,
     $72, $6E, $61, $20, $76, $69, $74, $61, $65, $20, $69, $70, $73, $75, $6D, $20,
@@ -961,12 +1006,12 @@ begin
     $71, $75, $69, $73, $20, $73, $65, $6D, $20, $71, $75, $69, $73, $20, $74, $65,
     $6C, $6C, $75, $73, $20, $66, $61, $75, $63, $69, $62, $75, $73, $20, $74, $65,
     $6D, $70, $6F, $72, $2E, $FF // break
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
+  CheckEquals(134, c.DataItemSize);
   var d := c.AsByteString;
-  // CheckEquals(134, c.DataItemSize);
   CheckEquals('hihi', d.Value[0]);
   CheckEquals('BTS', d.Value[1]);
   CheckEquals('''
@@ -981,7 +1026,7 @@ end;
 
 procedure TTestCase_cbor.Test_UTF8_0;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $79, $02, $7F, $F0, $9D, $95, $B4, $F0, $9D, $96, $93, $20, $F0, $9D, $96, $99,
     $F0, $9D, $96, $8D, $F0, $9D, $96, $8A, $20, $F0, $9D, $96, $87, $F0, $9D, $96,
     $8A, $F0, $9D, $96, $8C, $F0, $9D, $96, $8E, $F0, $9D, $96, $93, $F0, $9D, $96,
@@ -1023,7 +1068,7 @@ begin
     $F0, $9D, $96, $8D, $F0, $9D, $96, $8A, $20, $F0, $9D, $96, $9C, $F0, $9D, $96,
     $86, $F0, $9D, $96, $99, $F0, $9D, $96, $8A, $F0, $9D, $96, $97, $F0, $9D, $96,
     $98, $2E
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
@@ -1040,14 +1085,14 @@ end;
 
 procedure TTestCase_cbor.Test_UTF8_1;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $78, $2D, $E2, $93, $89, $E2, $93, $9E, $20, $E2, $93, $9B, $E2, $93, $9E, $E2,
     $93, $A2, $E2, $93, $94, $20, $E2, $93, $A8, $E2, $93, $9E, $E2, $93, $A4, $E2,
     $93, $A1, $20, $E2, $93, $9F, $E2, $93, $90, $E2, $93, $A3, $E2, $93, $97, $78,
     $2D, $49, $73, $20, $CA, $87, $C9, $A5, $C7, $9D, $20, $CA, $8D, $C9, $90, $CA,
     $8E, $20, $CA, $87, $6F, $20, $C9, $9F, $E1, $B4, $89, $75, $70, $20, $CA, $87,
     $C9, $A5, $C9, $90, $CA, $87, $20, $64, $C9, $90, $CA, $87, $C9, $A5
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
@@ -1069,7 +1114,7 @@ end;
 
 procedure TTestCase_cbor.Test_UTF8_2;
 begin
-  var c: TCbor := TBytes.Create($62, $22, $5C);
+  var c: TCbor := [$62, $22, $5C];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
@@ -1081,21 +1126,21 @@ end;
 
 procedure TTestCase_cbor.Test_UTF8_31;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $7F, $78, $25, $F0, $9F, $86, $83, $F0, $9F, $85, $B7, $F0, $9F, $86, $81, $F0,
     $9F, $85, $BE, $F0, $9F, $86, $86, $20, $F0, $9F, $85, $B0, $F0, $9F, $86, $86,
     $F0, $9F, $85, $B0, $F0, $9F, $86, $88, $78, $1D, $F0, $9F, $86, $83, $F0, $9F,
     $85, $B7, $F0, $9F, $85, $B4, $20, $F0, $9F, $85, $B5, $F0, $9F, $85, $B4, $F0,
     $9F, $85, $B0, $F0, $9F, $86, $81, $FF
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
-//  var d:= c.AsUTF8;
-//  CheckEquals(72, c.DataItemSize);
-//  CheckEquals('🆃🅷🆁🅾🆆 🅰🆆🅰🆈', d.Value[0]);
-//  CheckEquals('🆃🅷🅴 🅵🅴🅰🆁', d.Value[1]);
-  CheckEquals('(🆃🅷🆁🅾🆆 🅰🆆🅰🆈, 🆃🅷🅴 🅵🅴🅰🆁)', c.AsUTF8);
+  CheckEquals(72, c.DataItemSize);
+  var d:= c.AsUTF8;
+  CheckEquals('🆃🅷🆁🅾🆆 🅰🆆🅰🆈', d.Value[0]);
+  CheckEquals('🆃🅷🅴 🅵🅴🅰🆁', d.Value[1]);
+  CheckEquals('(_ "🆃🅷🆁🅾🆆 🅰🆆🅰🆈", "🆃🅷🅴 🅵🅴🅰🆁")', d);
 
   CheckFalse(c.Next);
 
@@ -1103,7 +1148,7 @@ end;
 
 procedure TTestCase_cbor.Test_UTF8_31_1;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $7F, $78, $25, $F0, $9F, $86, $83, $F0, $9F, $85, $B7, $F0, $9F, $86, $81, $F0,
     $9F, $85, $BE, $F0, $9F, $86, $86, $20, $F0, $9F, $85, $B0, $F0, $9F, $86, $86,
     $F0, $9F, $85, $B0, $F0, $9F, $86, $88, $78, $1D, $F0, $9F, $86, $83, $F0, $9F,
@@ -1113,20 +1158,21 @@ begin
     $9F, $85, $B0, $F0, $9F, $86, $86, $F0, $9F, $85, $B0, $F0, $9F, $86, $88, $78,
     $1D, $F0, $9F, $86, $83, $F0, $9F, $85, $B7, $F0, $9F, $85, $B4, $20, $F0, $9F,
     $85, $B5, $F0, $9F, $85, $B4, $F0, $9F, $85, $B0, $F0, $9F, $86, $81, $FF, $FF
-    );
+    ];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
+  CheckEquals(144, c.DataItemSize);
   var d := c.AsUTF8;
   CheckEquals('🆃🅷🆁🅾🆆 🅰🆆🅰🆈', d.Value[0]);
   CheckEquals('🆃🅷🅴 🅵🅴🅰🆁', d.Value[1]);
-  CheckEquals('🆃🅷🆁🅾🆆 🅰🆆🅰🆈', d.Value[2]);
-  CheckEquals('🆃🅷🅴 🅵🅴🅰🆁', d.Value[3]);
+  CheckEquals('🆃🅷🆁🅾🆆 🅰🆆🅰🆈🆃🅷🅴 🅵🅴🅰🆁', d.Value[2]);
+  CheckEquals('(_ "🆃🅷🆁🅾🆆 🅰🆆🅰🆈", "🆃🅷🅴 🅵🅴🅰🆁", "🆃🅷🆁🅾🆆 🅰🆆🅰🆈🆃🅷🅴 🅵🅴🅰🆁")', d);
 end;
 
 procedure TTestCase_cbor.Test_UTF8_31_2;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $7F, $78, $37, $EF, $BE, $91, $E5, $88, $80, $64, $20, $EF, $BE, $98, $6F, $75,
     $27, $E5, $B0, $BA, $E4, $B9, $87, $20, $67, $6F, $E5, $88, $80, $E5, $88, $80,
     $EF, $BE, $91, $20, $E4, $B9, $83, $E4, $B9, $87, $20, $E3, $82, $93, $EF, $BE,
@@ -1138,10 +1184,11 @@ begin
     $20, $F0, $9D, $93, $B6, $F0, $9D, $94, $82, $20, $F0, $9D, $93, $94, $F0, $9D,
     $93, $BE, $F0, $9D, $93, $B9, $F0, $9D, $93, $B1, $F0, $9D, $93, $B8, $F0, $9D,
     $93, $BB, $F0, $9D, $93, $B2, $F0, $9D, $93, $AA, $FF
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
+  CheckEquals(171, c.DataItemSize);
   var d:= c.AsUTF8;
   CheckEquals('''
   ﾑ刀d ﾘou'尺乇 go刀刀ﾑ 乃乇 んﾑｱｱﾘ
@@ -1152,7 +1199,7 @@ end;
 
 procedure TTestCase_cbor.Test_UTF8_31_255;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $7F, $78, $FD, $E1, $8C, $8E, $E1, $8A, $AD, $20, $E1, $8D, $95, $E1, $8B, $98,
     $E1, $89, $BF, $20, $E1, $8B, $95, $E1, $88, $8D, $E1, $8B, $AA, $E1, $8C, $95,
     $20, $E1, $8B, $95, $E1, $88, $8D, $E1, $88, $A0, $E1, $8A, $AD, $2C, $20, $E1,
@@ -1171,10 +1218,11 @@ begin
     $8C, $8E, $E1, $8A, $97, $E1, $8B, $98, $E1, $8D, $95, $2E, $2E, $2E, $2E, $2E,
     $72, $E1, $B4, $B0, $E1, $B4, $B1, $E1, $B4, $B8, $E1, $B4, $BE, $E1, $B4, $B4,
     $E1, $B4, $B5, $FF
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborUTF8 = c.DataType);
+  CheckEquals(276, c.DataItemSize);
   var d := c.AsUTF8;
   CheckEquals('''
   ጎክ ፕዘቿ ዕልዪጕ ዕልሠክ, ነየዪቿልዕጎክኗ ፕዪቿጠጌረጎክኗ ሠጎክኗነ. ጕቿቿየ ዐክ ነዘጎክጎክኗ ጠልጕቿ ጎፕ ጌዪጎኗዘፕቿዪ ፕዘልክ ል ነየዐፕረጎኗዘፕ.....
@@ -1183,37 +1231,80 @@ begin
   ᴰᴱᴸᴾᴴᴵ
   ''', d.Value[1]);
 
-  CheckEquals('(' + '''
-  ጎክ ፕዘቿ ዕልዪጕ ዕልሠክ, ነየዪቿልዕጎክኗ ፕዪቿጠጌረጎክኗ ሠጎክኗነ. ጕቿቿየ ዐክ ነዘጎክጎክኗ ጠልጕቿ ጎፕ ጌዪጎኗዘፕቿዪ ፕዘልክ ል ነየዐፕረጎኗዘፕ.....
-  ''' + ', ' + '''
-  ᴰᴱᴸᴾᴴᴵ
-  ''' + ')', d);
+  CheckEquals('(_ ' + '''
+  "ጎክ ፕዘቿ ዕልዪጕ ዕልሠክ, ነየዪቿልዕጎክኗ ፕዪቿጠጌረጎክኗ ሠጎክኗነ. ጕቿቿየ ዐክ ነዘጎክጎክኗ ጠልጕቿ ጎፕ ጌዪጎኗዘፕቿዪ ፕዘልክ ል ነየዐፕረጎኗዘፕ.....
+  ''' + '", ' + '''
+  "ᴰᴱᴸᴾᴴᴵ
+  ''' + '")', d);
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_UTF8_31_3;
+begin
+  var c: TCbor := [$7F, $63, $61, $62, $63, $63, $64, $65, $66, $FF, $63, $61, $62, $63];
+
+  CheckTrue(c.Next);
+  Check(cborUTF8 = c.DataType);
+  CheckEquals(10, c.DataItemSize);
+  CheckEquals('(_ "abc", "def")', c.AsUTF8);
+
+  CheckTrue(c.Next);
+  Check(cborUTF8 = c.DataType);
+  CheckEquals(4, c.DataItemSize);
+  CheckEquals('abc', c.AsUTF8);
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_UTF8_31_4;
+begin
+  var c: TCbor := [
+    $7F, $7F, $65, $68, $65, $6C, $6C, $6F, $63, $31, $32, $33, $7F, $65, $68, $65,
+    $6C, $6C, $6F, $63, $31, $32, $33, $FF, $FF, $65, $68, $65, $6C, $6C, $6F, $63,
+    $31, $32, $33, $FF
+  ];
+
+  CheckTrue(c.Next);
+  Check(cborUTF8 = c.DataType);
+  CheckEquals(36, c.DataItemSize);
+  CheckEquals('(_ "hello123hello123", "hello", "123")', c.AsUTF8);
+
+  CheckEquals('hello123hello123', c.AsUTF8.Value[0]);
+  CheckEquals('hello', c.AsUTF8.Value[1]);
+  CheckEquals('123', c.AsUTF8.Value[2]);
 
   CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Array_0;
 begin
-  var c: TCbor := TBytes.Create($82, $01, $45, $68, $65, $6C, $6C, $6F);
+  var c: TCbor := [$82, $01, $45, $68, $65, $6C, $6C, $6F];
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
-  var ans : TCbor_Array := c.AsArray;
-  CheckEquals(TCbor_UInt64(ans.Value[0]), 1);
-  CheckEquals(TCbor_ByteString(ans.Value[1]), 'hello');
+  CheckEquals(8, c.DataItemSize);
+  var ans : TArray<TCborItem> := c.AsArray;
+  CheckEquals(1, UInt64(ans[0]));
+  CheckEquals('hello', String(ans[1]));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Array_1;
 begin
-  var c: TCbor := TBytes.Create($82, $01, $82, $02, $03);
+  var c: TCbor := [$82, $01, $82, $02, $03];
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
-  var ans : TCbor_Array := c.AsArray;
+  CheckEquals(5, c.DataItemSize);
+  var ans : TArray<TCborItem> := c.AsArray;
 
-  CheckEquals(TCbor_Uint64(ans.Value[0]), 1);
-  CheckEquals(TCbor_Uint64(TCbor_Array(ans.Value[1]).Value[0]), 2);
-  CheckEquals(TCbor_Uint64(TCbor_Array(ans.Value[1]).Value[1]), 3);
+  CheckEquals(1, Uint64(ans[0]));
+  CheckEquals(2, Uint64(TCbor_Array(ans[1]).Value[0]));
+  CheckEquals(3, Uint64(TCbor_Array(ans[1]).Value[1]));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Array_2;
@@ -1222,149 +1313,188 @@ begin
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
+  CheckEquals(1, c.DataItemSize);
   var ans : TCbor_Array := c.AsArray;
-  CheckEquals(Length(ans.Value), 0);
+  CheckEquals(0, Length(ans.Value));
 
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Array_24;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $98, $18, $01, $02, $03, $04, $05, $42, $68, $69, $66, $E4, $B9, $83, $E4, $B9,
     $87, $35, $38, $DD, $82, $01, $02, $19, $01, $2C, $19, $02, $58, $19, $03, $84,
     $39, $04, $AF, $43, $42, $54, $53, $42, $47, $6F, $44, $79, $6F, $75, $72, $43,
     $6F, $77, $6E, $43, $77, $61, $79, $84, $63, $50, $75, $74, $48, $77, $65, $61,
     $6B, $6E, $65, $73, $73, $64, $61, $77, $61, $79, $19, $07, $DD, $15, $16, $17,
     $18, $18
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
+  CheckEquals(82, c.DataItemSize);
   var ans := c.AsArray;
-  CheckEquals(TCbor_UInt64(ans.Value[0]), 1);
-  CheckEquals(TCbor_UInt64(ans.Value[1]), 2);
-  CheckEquals(TCbor_UInt64(ans.Value[2]), 3);
-  CheckEquals(TCbor_UInt64(ans.Value[3]), 4);
-  CheckEquals(TCbor_UInt64(ans.Value[4]), 5);
-  CheckEquals(TCbor_ByteString(ans.Value[5]), 'hi');
-  CheckEquals(TCbor_UTF8(ans.Value[6]), '乃乇');
-  CheckEquals(TCbor_Int64(ans.Value[7]), -22);
-  CheckEquals(TCbor_Int64(ans.Value[8]), -222);
-  CheckEquals(TCbor_UInt64(TCbor_Array(ans.Value[9]).Value[0]), 1);
-  CheckEquals(TCbor_UInt64(TCbor_Array(ans.Value[9]).Value[1]), 2);
-  CheckEquals(TCbor_UInt64(ans.Value[10]), 300);
-  CheckEquals(TCbor_UInt64(ans.Value[11]), 600);
-  CheckEquals(TCbor_UInt64(ans.Value[12]), 900);
-  CheckEquals(TCbor_Int64(ans.Value[13]), -1200);
-  CheckEquals(TCbor_ByteString(ans.Value[14]), 'BTS');
-  CheckEquals(TCbor_ByteString(ans.Value[15]), 'Go');
-  CheckEquals(TCbor_ByteString(ans.Value[16]), 'your');
-  CheckEquals(TCbor_ByteString(ans.Value[17]), 'own');
-  CheckEquals(TCbor_ByteString(ans.Value[18]), 'way');
-  CheckEquals(TCbor_UTF8(TCbor_Array(ans.Value[19]).Value[0]), 'Put');
-  CheckEquals(TCbor_UTF8(TCbor_Array(ans.Value[19]).Value[1]), 'weakness');
-  CheckEquals(TCbor_UTF8(TCbor_Array(ans.Value[19]).Value[2]), 'away');
-  CheckEquals(TCbor_UInt64(TCbor_Array(ans.Value[19]).Value[3]), 2013);
-  CheckEquals(TCbor_UInt64(ans.Value[20]), 21);
-  CheckEquals(TCbor_UInt64(ans.Value[21]), 22);
-  CheckEquals(TCbor_UInt64(ans.Value[22]), 23);
-  CheckEquals(TCbor_UInt64(ans.Value[23]), 24);
+  CheckEquals(1, UInt64(ans.Value[0]));
+  CheckEquals(2, TCbor_UInt64(ans.Value[1]));
+  CheckEquals(3, TCbor_UInt64(ans.Value[2]));
+  CheckEquals(4, TCbor_UInt64(ans.Value[3]));
+  CheckEquals(5, TCbor_UInt64(ans.Value[4]));
+  CheckEquals('hi', ans.Value[5]);
+  CheckEquals('乃乇', ans.Value[6]);
+  CheckEquals(-22, Int64(ans.Value[7]));
+  CheckEquals(-222, Int64(ans.Value[8]));
+  CheckEquals(1, TCbor_UInt64(TCbor_Array(ans.Value[9]).Value[0]));
+  CheckEquals(2, TCbor_UInt64(TCbor_Array(ans.Value[9]).Value[1]));
+  CheckEquals(300, TCbor_UInt64(ans.Value[10]));
+  CheckEquals(600, TCbor_UInt64(ans.Value[11]));
+  CheckEquals(900, TCbor_UInt64(ans.Value[12]));
+  CheckEquals(-1200, Int64(ans.Value[13]));
+  CheckEquals('BTS', ans.Value[14]);
+  CheckEquals('Go', c.AsArray.Value[15]);
+  CheckEquals('your', ans.Value[16]);
+  CheckEquals('own', ans.Value[17]);
+  CheckEquals('way', ans.Value[18]);
+  CheckEquals('Put', TCbor_Array(ans.Value[19]).Value[0]);
+  CheckEquals('weakness', TCbor_Array(ans.Value[19]).Value[1]);
+  CheckEquals('away', TCbor_Array(ans.Value[19]).Value[2]);
+  CheckEquals(2013, TCbor_UInt64(TCbor_Array(ans.Value[19]).Value[3]));
+  CheckEquals(21, TCbor_UInt64(ans.Value[20]));
+  CheckEquals(22, TCbor_UInt64(ans.Value[21]));
+  CheckEquals(23, TCbor_UInt64(ans.Value[22]));
+  CheckEquals(24, TCbor_UInt64(ans.Value[23]));
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_Array_3;
+begin
+  var c : TCbor := [$83, $F0, $45, $68, $65, $6C, $6C, $6F, $C4, $82, $21, $19, $6A, $B3];
+
+  CheckTrue(c.Next);
+  Check(cborArray = c.DataType);
+  CheckEquals(14, c.DataItemSize);
+
+  var ans := c.AsArray.Value;
+  CheckEquals('simple(16)', TCbor_Special(ans[0]));
+  CheckEquals('hello', ans[1]);
+  var d : TBcd := TCbor_Semantic(ans[2]);
+  Check(273.15 = d);
 
   CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Array_31;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $9F, $01, $45, $68, $65, $6C, $6C, $6F, $82, $01, $02, $81, $9F, $01, $02, $FF, $FF
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
+  CheckEquals(17, c.DataItemSize);
 
-  var ans : TCbor_Array := c.AsArray;
-  CheckEquals(TCbor_Uint64(ans.Value[0]), 1);
-  CheckEquals(TCbor_ByteString(ans.Value[1]), 'hello');
-  CheckEquals(TCbor_Uint64(TCbor_Array(ans.Value[2]).Value[0]), 1);
-  CheckEquals(TCbor_Uint64(TCbor_Array(ans.Value[2]).Value[1]), 2);
-  CheckEquals(TCbor_Uint64(TCbor_Array(TCbor_Array(ans.Value[3]).Value[0]).Value[0]), 1);
-  CheckEquals(TCbor_Uint64(TCbor_Array(TCbor_Array(ans.Value[3]).Value[0]).Value[1]), 2);
+  var ans : TArray<TCborItem> := c.AsArray;
+  CheckEquals(1, TCbor_Uint64(ans[0]));
+  CheckEquals('hello', ans[1]);
+  CheckEquals(1, Uint64(TCbor_Array(ans[2]).Value[0]));
+  CheckEquals(2, TCbor_Uint64(TCbor_Array(ans[2]).Value[1]));
+  CheckEquals(1, TCbor_Uint64(TCbor_Array(TCbor_Array(ans[3]).Value[0]).Value[0]));
+  CheckEquals(2, TCbor_Uint64(TCbor_Array(TCbor_Array(ans[3]).Value[0]).Value[1]));
 
   CheckFalse(c.Next);
+end;
 
+procedure TTestCase_cbor.Test_Array_31_1;
+begin
+  var c: TCbor := [$9F, $FF];
+
+  CheckTrue(c.Next);
+  Check(cborArray = c.DataType);
+  CheckEquals(2, c.DataItemSize);
+
+  var ans := c.AsArray;
+  var ansarr := ans.Encode_Array;
+  Check(ansarr[0] = $9F);
+  Check(ansarr[1] = $FF);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Map_0;
 begin
-  var c: TCbor := TBytes.Create(
-    $A2, $61, $74, $19, $04, $D2, $61, $6C, $19, $09, $29
-  );
+  var c: TCbor := [$A2, $61, $74, $19, $04, $D2, $61, $6C, $19, $09, $29];
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
+  CheckEquals(11, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals(TCbor_UTF8(ans.Value[0].Key), 't');
-  CheckEquals(TCbor_UInt64(ans.Value[0].Value), 1234);
-  CheckEquals(TCbor_UTF8(ans.Value[1].Key), 'l');
-  CheckEquals(TCbor_UInt64(ans.Value[1].Value), 2345);
+  CheckEquals('t', ans.Value[0].Key);
+  CheckEquals(1234, TCbor_UInt64(ans.Value[0].Value));
+  CheckEquals('l', ans.Value[1].Key);
+  CheckEquals(2345, TCbor_UInt64(ans.Value[1].Value));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Map_1;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $A4, $01, $63, $4A, $4A, $4B, $02, $3A, $00, $0F, $42, $3F, $43, $6B, $65, $79,
     $6F, $EF, $BD, $96, $EF, $BD, $81, $EF, $BD, $8C, $EF, $BD, $95, $EF, $BD, $85,
     $45, $61, $72, $72, $61, $79, $85, $01, $02, $03, $04, $05
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
+  CheckEquals(44, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals(TCbor_UInt64(ans.Value[0].Key), 1);
-  CheckEquals(TCbor_UTF8(ans.Value[0].Value), 'JJK');
-  CheckEquals(TCbor_UInt64(ans.Value[1].Key), 2);
-  CheckEquals(TCbor_Int64(ans.Value[1].Value), -1000000);
-  CheckEquals(TCbor_ByteString(ans.Value[2].Key), 'key');
-  CheckEquals(TCbor_UTF8(ans.Value[2].Value), 'ｖａｌｕｅ');
-  CheckEquals(TCbor_ByteString(ans.Value[3].Key), 'array');
+  CheckEquals(1, TCbor_UInt64(ans.Value[0].Key));
+  CheckEquals('JJK', ans.Value[0].Value);
+  CheckEquals(2, TCbor_UInt64(ans.Value[1].Key));
+  CheckEquals(-1000000, TCbor_Int64(ans.Value[1].Value));
+  CheckEquals('key', ans.Value[2].Key);
+  CheckEquals('ｖａｌｕｅ', ans.Value[2].Value);
+  CheckEquals('array', ans.Value[3].Key);
   var a : TCbor_Array := ans.Value[3].Value;
-  CheckEquals(TCbor_UInt64(a.Value[0]), 1);
-  CheckEquals(TCbor_UInt64(a.Value[1]), 2);
-  CheckEquals(TCbor_UInt64(a.Value[2]), 3);
-  CheckEquals(TCbor_UInt64(a.Value[3]), 4);
-  CheckEquals(TCbor_UInt64(a.Value[4]), 5);
+  CheckEquals(1, TCbor_UInt64(a.Value[0]));
+  CheckEquals(2, TCbor_UInt64(a.Value[1]));
+  CheckEquals(3, TCbor_UInt64(a.Value[2]));
+  CheckEquals(4, TCbor_UInt64(a.Value[3]));
+  CheckEquals(5, TCbor_UInt64(a.Value[4]));
 
   CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Map_2;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $A3, $01, $02, $03, $A2, $18, $1F, $0D, $18, $20, $17, $04, $05
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
+  CheckEquals(13, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals(TCbor_UInt64(ans.Value[0].Key), 1);
-  CheckEquals(TCbor_UInt64(ans.Value[0].Value), 2);
-  CheckEquals(TCbor_UInt64(ans.Value[1].Key), 3);
-  CheckEquals(TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[0].Key), 31);
-  CheckEquals(TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[0].Value), 13);
-  CheckEquals(TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[1].Key), 32);
-  CheckEquals(TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[1].Value), 23);
-  CheckEquals(TCbor_UInt64(ans.Value[2].Key), 4);
-  CheckEquals(TCbor_UInt64(ans.Value[2].Value), 5);
+  CheckEquals(1, TCbor_UInt64(ans.Value[0].Key));
+  CheckEquals(2, TCbor_UInt64(ans.Value[0].Value));
+  CheckEquals(3, TCbor_UInt64(ans.Value[1].Key));
+  CheckEquals(31, TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[0].Key));
+  CheckEquals(13, TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[0].Value));
+  CheckEquals(32, TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[1].Key));
+  CheckEquals(23, TCbor_UInt64(TCbor_Map(ans.Value[1].Value).Value[1].Value));
+  CheckEquals(4, TCbor_UInt64(ans.Value[2].Key));
+  CheckEquals(5, TCbor_UInt64(ans.Value[2].Value));
 
   CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Map_24;
 begin
-  var c: TCbor := TBytes.Create(
+  var c: TCbor := [
     $B8, $23, $45, $4E, $6F, $2E, $20, $31, $65, $4E, $6F, $2E, $20, $31, $02, $02,
     $03, $03, $64, $6E, $61, $6D, $65, $6B, $45, $72, $6B, $69, $6E, $20, $51, $61,
     $64, $69, $72, $67, $69, $73, $6F, $43, $6F, $64, $65, $62, $41, $51, $63, $57,
@@ -1384,10 +1514,11 @@ begin
     $E8, $19, $27, $10, $19, $27, $10, $19, $07, $DD, $39, $02, $64, $19, $07, $CD,
     $39, $03, $84, $19, $07, $CB, $1A, $00, $BB, $B2, $D5, $19, $07, $CA, $1A, $00,
     $8B, $29, $DB, $19, $07, $C9, $19, $01, $35, $19, $07, $C8, $19, $04, $B4
-  );
+  ];
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
+  CheckEquals(303, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
   Check(TCbor_ByteString(ans.Value[0].Key).Value[0] = 'No. 1'); Check(TCbor_UTF8(ans.Value[0].Value).Value[0] = 'No. 1');
@@ -1447,6 +1578,7 @@ begin
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
+  CheckEquals(28, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
   Check(TCbor_UInt64(ans.Value[0].Key).Value = 1);
@@ -1544,11 +1676,13 @@ end;
 
 procedure TTestCase_cbor.Test_Special_0;
 begin
-  var c: TCbor := TBytes.Create($F4);
+  var c: TCbor := [$F4];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
   CheckFalse(c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_1;
@@ -1558,6 +1692,8 @@ begin
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
   CheckTrue(c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_2;
@@ -1566,354 +1702,378 @@ begin
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var d : Variant := c.AsSpecial;
-  Check(d = Null);
+//  var d : Variant := c.AsSpecial;
+  Check(Null = Variant(c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_0;
 begin
-  var c: TCbor := TBytes.Create($F9, $3E, $00);
+  var c: TCbor := [$F9, $3E, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  CheckEquals(0, BcdCompare(1.5, b));
+  CheckEquals(1.5, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_1;
 begin
-  var c: TCbor := TBytes.Create($F9, $7C, $00);
+  var c: TCbor := [$F9, $7C, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(1.0/0.0 = b);
+  CheckEquals(1.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_2;
 begin
-  var c: TCbor := TBytes.Create($F9, $FC, $00);
+  var c: TCbor := [$F9, $FC, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(-1.0/0.0 = b);
+  CheckEquals(-1.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_3;
 begin
-  var c: TCbor := TBytes.Create($F9, $80, $00);
+  var c: TCbor := [$F9, $80, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(-0.0 = b);
+  CheckEquals(-0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_4;
 begin
-  var c: TCbor := TBytes.Create($F9, $7E, $02);
+  var c: TCbor := [$F9, $7E, $02];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(0.0/0.0 = b);
+  CheckEquals(0.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_5;
 begin
-  var c: TCbor := TBytes.Create($F9, $CE, $1F);
+  var c: TCbor := [$F9, $CE, $1F];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  CheckEquals(0, BcdCompare(-24.484375, c.AsSpecial));
+  CheckEquals(-24.484375, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_6;
 begin
-  var c: TCbor := TBytes.Create($F9, $7B, $FF);
+  var c: TCbor := [$F9, $7B, $FF];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(65504.0 = b);
+  CheckEquals(65504.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_7;
 begin
-  var c: TCbor := TBytes.Create($F9, $00, $00);
+  var c: TCbor := [$F9, $00, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(0.0 = b);
+  CheckEquals(0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_8;
 begin
-  var c: TCbor := TBytes.Create($F9, $3C, $00);
+  var c: TCbor := [$F9, $3C, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b :TBcd := c.AsSpecial;
-  Check(1.0 = b);
+  CheckEquals(1.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_9;
 begin
-  var c: TCbor := TBytes.Create($F9, $03, $FF);
+  var c: TCbor := [$F9, $03, $FF];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b := c.AsSpecial;
-  var d : TBcd := b;
-  Check('0.000060975551605224609375' = d);
+  Check(SameValue(0.000060975551605224609375, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_10;
 begin
-  var c: TCbor := TBytes.Create($F9, $00, $01);
+  var c: TCbor := [$F9, $00, $01];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  var s := BcdToStr(b);
-  CheckEquals(s, '0.000000059604644775390625');
-//  CheckTrue(b = 0.000000059604644775390625);
-//  CheckEquals(0, BcdCompare(b, 0.000000059604644775390625));
+  Check(SameValue(0.000000059604644775390625, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_16Bit_11;
 begin
-  var c: TCbor := TBytes.Create($F9, $C4, $00);
+  var c: TCbor := [$F9, $C4, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  CheckEquals(0, BcdCompare(-4.0, c.AsSpecial));
+  CheckEquals(-4.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_0;
 begin
-  var c: TCbor := TBytes.Create($FA, $7F, $80, $00, $00);
+  var c: TCbor := [$FA, $7F, $80, $00, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(1.0/0.0 = b);
+  CheckEquals(1.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_1;
 begin
-  var c: TCbor := TBytes.Create($FA, $FF, $80, $00, $00);
+  var c: TCbor := [$FA, $FF, $80, $00, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(-1.0/0.0 = b);
+  CheckEquals(-1.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_2;
 begin
-  var c: TCbor := TBytes.Create($FA, $7F, $80, $08, $00);
+  var c: TCbor := [$FA, $7F, $80, $08, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  Check(0.0/0.0 = b);
+  CheckEquals(0.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_3;
 begin
-  var c: TCbor := TBytes.Create($FA, $9E, $8F, $88, $10);
+  var c: TCbor := [$FA, $9E, $8F, $88, $10];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  var d := BcdToStr(b);
-  CheckEquals('-0.0000000000000000000151969880632183667248523602222309847320502740330994129180908203125', d);
-//  CheckEquals(0, BcdCompare(-0.0000000000000000000151969880632183667248523602222309847320502740330994129180908203125, b));
+  Check(SameValue(-1.5196988063218367e-20, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_4;
 begin
-   var c: TCbor := TBytes.Create($FA, $52, $E5, $8B, $9C);
+   var c: TCbor := [$FA, $52, $E5, $8B, $9C];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var a := c.AsSpecial;
-  var b : TBcd := a;
-  var d := BcdToStr(b);
-  Check(0 = BcdCompare(492944883712.0, b));
-  CheckEquals('492944883712', d);
-//  CheckEquals('492944883712.0', d);
+  CheckEquals(492944883712.0, c.AsSpecial);
 
-//Check('9007199254740992' = pow(2, 53));
-//Check('179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137216' = pow(2, 1024));
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_5;
 begin
-  var c: TCbor := TBytes.Create($FA, $12, $E5, $8B, $9C);
+  var c: TCbor := [$FA, $12, $E5, $8B, $9C];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-//  Check(SameValue(1.44863481517551e-2, c.AsSpecial));
-  CheckEquals(0.000000000000000000000000001448634815175513617983697764181463637879541776765091043444044771604239940643310546875, c.AsSpecial);
+  Check(SameValue(1.4486348151755136e-27, c.AsSpecial));
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_6;
 begin
-  var c: TCbor := TBytes.Create($FA, $47, $C3, $50, $00);
+  var c: TCbor := [$FA, $47, $C3, $50, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b : TBcd := c.AsSpecial;
-  var s := BcdToStr(b);
-  CheckEquals(0, BcdCompare(100000.0, b));
+  CheckEquals(100000.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_32BitFloat_7;
 begin
-  var c: TCbor := TBytes.Create($FA, $7F, $7F, $FF, $FF);
+  var c: TCbor := [$FA, $7F, $7F, $FF, $FF];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var a := c.AsSpecial;
-  var b : TBcd := a;
-//  Check(SameValue(BcdToDouble(TBcd('340282346638528859811704183484516925440')), BcdToDouble(b), 0.00000000000000001));
-  CheckEquals('340282346638528859811704183484516925440', BcdToStr(b));
+  Check(SameValue(3.4028234663852886e+38, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_0;
 begin
-  var c: TCbor := TBytes.Create($FB, $40, $09, $21, $FB, $54, $44, $2D, $18);
+  var c: TCbor := [$FB, $40, $09, $21, $FB, $54, $44, $2D, $18];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check('3.141592653589793' = b);
+  var a:= c.AsSpecial;
+  Check(SameValue(3.141592653589793, a));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_1;
 begin
-  var c: TCbor := TBytes.Create($FB, $7F, $F0, $00, $00, $00, $00, $00, $00);
+  var c: TCbor := [$FB, $7F, $F0, $00, $00, $00, $00, $00, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check(1.0/0.0 = b);
+  CheckEquals(1.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_2;
 begin
-  var c: TCbor := TBytes.Create($FB, $FF, $F0, $00, $00, $00, $00, $00, $00);
+  var c: TCbor := [$FB, $FF, $F0, $00, $00, $00, $00, $00, $00];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check(-1.0/0.0 = b);
+  CheckEquals(-1.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_3;
 begin
-  var c: TCbor := TBytes.Create($FB, $FF, $F1, $29, $00, $0F, $41, $80, $09);
+  var c: TCbor := [$FB, $FF, $F1, $29, $00, $0F, $41, $80, $09];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check(0.0/0.0 = b);
+  CheckEquals(0.0/0.0, c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_4;
 begin
-  var c: TCbor := TBytes.Create($FB, $81, $A2, $09, $10, $8E, $05, $D0, $09);
+  var c: TCbor := [$FB, $81, $A2, $09, $10, $8E, $05, $D0, $09];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  var ans : TBcd := '-0.00000000000000000000000000000000000000000000000000000000000000000000000000000'
-  + '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
-  + '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
-  + '000000000000000000000000000000084158954649921470919354930409190165333932896712318500663480181461'
-  + '719627424334755743026253016865991704445867305798258518836357469501720753539830223832719145267936'
-  + '857684371784260064816971573859977505100493559474588966730159633261110315685823077036969329988840'
-  + '653884775780901050705791686569483469040189259994679023644183202678373144404471704770403935135697'
-  + '400244287582025987164089401174368120054720639440782540737833925892432789399116756122882070587257'
-  + '544807530257568519586687372318348576567329345198016672165758192688428112672941524829975161383474'
-  + '818007219799618770869205307770087375393459198451970085272327109125318612594569114142214157756215'
-  + '789141198113620441923344539649116050512419282005563472768041907820686653440844793294672854244709014892578125';
-  Check(ans = b);
+  Check(SameValue(-8.415895464992147e-301, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_5;
 begin
-  var c: TCbor := TBytes.Create($FB, $3F, $F1, $99, $99, $99, $99, $99, $9A);
+  var c: TCbor := [$FB, $3F, $F1, $99, $99, $99, $99, $99, $9A];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check(1.1 = b);
+  Check(SameValue(1.1, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_6;
 begin
-  var c: TCbor := TBytes.Create($FB, $7E, $37, $E4, $3C, $88, $00, $75, $9C);
+  var c: TCbor := [$FB, $7E, $37, $E4, $3C, $88, $00, $75, $9C];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check('1000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160' = BcdToStr(b));
+  Check(SameValue(1.0e+300, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_64BitFloat_7;
 begin
-  var c: TCbor := TBytes.Create($FB, $C0, $10, $66, $66, $66, $66, $66, $66);
+  var c: TCbor := [$FB, $C0, $10, $66, $66, $66, $66, $66, $66];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
-  var b: TBcd := c.AsSpecial;
-  Check(-4.1 = b);
+  Check(SameValue(-4.1, c.AsSpecial));
+
+  CheckFalse(c.Next);
+end;
+
+procedure TTestCase_cbor.Test_Special_64BitFloat_8;
+begin
+  var c: TCbor := [$FB, $41, $D4, $52, $D9, $EC, $20, $00, $00];
+
+  CheckTrue(c.Next);
+  Check(cborSpecial = c.DataType);
+  Check(SameValue(1363896240.5, c.AsSpecial));
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_Simple_0;
 begin
-  var c: TCbor := TBytes.Create($F0);
+  var c: TCbor := [$F0];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
   CheckEquals('simple(16)', c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_Simple_1;
 begin
-  var c: TCbor := TBytes.Create($F8, $18);
+  var c: TCbor := [$F8, $18];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
   CheckEquals('simple(24)', c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_Simple_2;
 begin
-  var c: TCbor := TBytes.Create($F8, $FF);
+  var c: TCbor := [$F8, $FF];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
   CheckEquals('simple(255)', c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Special_Simple_3;
 begin
-  var c: TCbor := TBytes.Create($F7);
+  var c: TCbor := [$F7];
 
   CheckTrue(c.Next);
   Check(cborSpecial = c.DataType);
   CheckEquals('undefined', c.AsSpecial);
+
+  CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Unsigned_0;
 begin
-  var c: TCbor := TBytes.Create($00, $01, $17);
+  var c: TCbor := [$00, $01, $17];
 
   CheckTrue(c.Next);
   Check(cborUnsigned = c.DataType);
@@ -1935,7 +2095,7 @@ end;
 
 procedure TTestCase_cbor.Test_Unsigned_8;
 begin
-  var c: TCbor := TBytes.Create($18, $EB);
+  var c: TCbor := [$18, $EB];
 
   CheckTrue(c.Next);
   Check(cborUnsigned = c.DataType);
@@ -1947,7 +2107,7 @@ end;
 
 procedure TTestCase_cbor.Test_Unsigned_16;
 begin
-  var c: TCbor := TBytes.Create($19, $30, $3B);
+  var c: TCbor := [$19, $30, $3B];
 
   CheckTrue(c.Next);
   Check(cborUnsigned = c.DataType);
@@ -1959,7 +2119,7 @@ end;
 
 procedure TTestCase_cbor.Test_Unsigned_32;
 begin
-  var c: TCbor := TBytes.Create($1A, $00, $03, $A9, $80);
+  var c: TCbor := [$1A, $00, $03, $A9, $80];
 
   CheckTrue(c.Next);
   Check(cborUnsigned = c.DataType);
@@ -1971,21 +2131,21 @@ end;
 
 procedure TTestCase_cbor.Test_Unsigned_64;
 begin
-  var c: TCbor := TBytes.Create($1B, $00, $1F, $E0, $22, $99, $A3, $8B, $8C);
+  var c: TCbor := [$1B, $00, $1F, $E0, $22, $99, $A3, $8B, $8C];
 
   CheckTrue(c.Next);
   var ansUInt64 : TCbor_UInt64 := c.AsUInt64;
-  CheckEquals(ansUInt64, 8972163489172364);
+  CheckEquals(8972163489172364, ansUInt64);
   Check(ansUInt64.cborType = cborUnsigned);
 
   var a : TCborItem := ansUInt64;
-  var b := TBytes.Create($1B, $00, $1F, $E0, $22, $99, $A3, $8B, $8C);;
+  var b := [$1B, $00, $1F, $E0, $22, $99, $A3, $8B, $8C];
   for var i := Low(a.Value) to High(a.Value) do
     CheckEquals(b[i], a.Value[i]);
   Check(a.cborType = cborUnsigned);
 
   var ansUInt64_2 : TCbor_UInt64 := a;
-  CheckEquals(ansUInt64_2, 8972163489172364);
+  CheckEquals(8972163489172364, ansUInt64_2);
   Check(ansUInt64_2.cborType = cborUnsigned);
 
   CheckFalse(c.Next);
