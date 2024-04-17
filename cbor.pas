@@ -61,7 +61,7 @@ type
     FType: TCborDataType;
     FIsIndefiniteLength: Boolean;
   public
-    constructor Create(V: TArray<string>);
+    constructor Create(V: TArray<string>; IsIL: Boolean = false);
     function Encode_ByteString: TBytes;
     function Value: TArray<string>;
     function cborType: TCborDataType;
@@ -76,7 +76,7 @@ type
     FType: TCborDataType;
     FIsIndefiniteLength: Boolean;
   public
-    constructor Create(V: TArray<string>);
+    constructor Create(V: TArray<string>; IsIL: Boolean = false);
     function Encode_UTF8: TBytes;
     function Value: TArray<string>;
     function cborType: TCborDataType;
@@ -563,14 +563,14 @@ end;
 
 { TCbor_ByteString }
 
-constructor TCbor_ByteString.Create(V: TArray<string>);
+constructor TCbor_ByteString.Create(V: TArray<string>; IsIL: Boolean = false);
 begin
   FValue := V;
   FType := cborByteString;
+  FIsIndefiniteLength := IsIL;
+
   if Length(V) > 1 then
-    FIsIndefiniteLength := true
-  else
-    FIsIndefiniteLength := false;
+    FIsIndefiniteLength := True;
 end;
 
 function TCbor_ByteString.Encode_ByteString: TBytes;
@@ -632,14 +632,14 @@ end;
 
 { TCbor_UTF8 }
 
-constructor TCbor_UTF8.Create(V: TArray<string>);
+constructor TCbor_UTF8.Create(V: TArray<string>; IsIL: Boolean = false);
 begin
   FValue := V;
   FType := cborUTF8;
+  FIsIndefiniteLength := IsIL;
+  // what if Length(V) > 1 and IsIL = false?
   if Length(V) > 1 then
-    FIsIndefiniteLength := true
-  else
-    FIsIndefiniteLength := false;
+    FIsIndefiniteLength := True;
 end;
 
 function TCbor_UTF8.Encode_UTF8: TBytes;
@@ -875,7 +875,9 @@ begin
     if arr[i].cborType = cborUnsigned then
       arrInt64 := arrInt64 + [TCbor_UInt64(arr[i]).Value]
     else if arr[i].cborType = cborSigned then
-      arrInt64 := arrInt64 + [TCbor_Int64(arr[i]).Value];
+      arrInt64 := arrInt64 + [TCbor_Int64(arr[i]).Value]
+    else
+      raise Exception.Create('Invalid Type.');
 
   Result := arrInt64[1] * Power(base, arrInt64[0]);
 end;
@@ -891,11 +893,10 @@ begin
 
   if c.DataType = cborByteString then
     Result := c.AsByteString.Value[0]
-  else if c.DataType = cborUTF8 then begin
+  else if c.DataType = cborUTF8 then
     Result := c.AsUTF8.Value[0];
-    if (a.Tag = base64url) or (a.Tag = base64) then
-      Result := TBase64Encoding.Base64String.Decode(Result);
-  end;
+
+  // TO BE IMPLEMENTED: Big Number
 end;
 
 function TCbor_Semantic.Value: TBytes;
@@ -1011,7 +1012,7 @@ begin
   for var i := exponentLength downto 1 do
     if BinaryBits[i] then
       exponent := exponent + Power(2, (exponentLength-i));
-  exponent := exponent - (Power(2, (exponentLength - 1)) - 1);
+  exponent := exponent - (Power(2, (exponentLength - 1)) - 1);  // subtract bias
 
   for var i := BinaryBits.Size-1 downto exponentLength+1 do begin
     if BinaryBits[i] then

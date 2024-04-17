@@ -221,7 +221,7 @@ begin
   CheckEquals(28, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64url = ans.Tag);
-  CheckEquals('www.thisisaurl.com', ans);
+  CheckEquals('d3d3LnRoaXNpc2F1cmwuY29t', ans);
 
   CheckFalse(c.Next);
 end;
@@ -239,7 +239,7 @@ begin
   CheckEquals(34, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64url = ans.Tag);
-  CheckEquals('www.exampleurlhaha.com', ans);
+  CheckEquals('d3d3LmV4YW1wbGV1cmxoYWhhLmNvbQ', ans);
 
   CheckFalse(c.Next);
 end;
@@ -257,14 +257,14 @@ begin
   CheckEquals(32, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64 = ans.Tag);
-  CheckEquals('Hello World Example', ans);
+  CheckEquals('SGVsbG8gV29ybGQgRXhhbXBsZQ==', ans);
 
   CheckTrue(c.Next);
   Check(cborSemantic = c.DataType);
   CheckEquals(15, c.DataItemSize);
   var ans2 := c.AsSemantic;
   Check(base64 = ans2.Tag);
-  CheckEquals('Delphi 12', ans2);
+  CheckEquals('RGVscGhpIDEy', ans2);
 
   CheckFalse(c.Next);
 end;
@@ -278,7 +278,7 @@ begin
   CheckEquals(15, c.DataItemSize);
   var ans := c.AsSemantic;
   Check(base64 = ans.Tag);
-  CheckEquals('Delphi 12', ans);
+  CheckEquals('RGVscGhpIDEy', ans);
 
   CheckFalse(c.Next);
 end;
@@ -746,7 +746,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeArray_2;
 begin
-  var arr: TArray<TCborItem> := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'])]
+  var arr: TArray<TCborItem> := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], True)]
               + [TCbor_Utf8.Create(['Provident neque ullam corporis sed.'])]
               + [TCbor_Uint64.Create(12123)] + [TCbor_Int64.Create(-789789)] + [TCbor_Int64.Create(-1)];
 
@@ -769,7 +769,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeArray_3;
 begin
-  var arrNested: TArray<TCborItem> :=  [TCbor_Uint64.Create(555)] + [TCbor_ByteString.Create(['Nested', 'arraY'])]
+  var arrNested: TArray<TCborItem> :=  [TCbor_Uint64.Create(555)] + [TCbor_ByteString.Create(['Nested', 'arraY'], True)]
               + [TCbor_Map.Create([TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(6), TCbor_Uint64.Create(6))])];
 
   var arr: TArray<TCborItem> := [TCbor_Uint64.Create(1)] + [TCbor_UTF8.Create(['lol'])]
@@ -854,7 +854,7 @@ begin
 
 
   var p : TArray<TPair<TCborItem, TCborItem>> :=
-    [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(1, cborUnsigned), TCbor_UTF8.Create(['Hello', 'Just', 'Kidding']))] +
+    [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(1, cborUnsigned), TCbor_UTF8.Create(['Hello', 'Just', 'Kidding'], True))] +
     [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(2, cborUnsigned), TCbor_Array.Create(arr, true))] +
     [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(3, cborUnsigned), TCbor_Map.Create(map, true))];
 
@@ -919,7 +919,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_2;
 begin
-  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04]);
+  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04], True);
 
   var d:= TBytes.Create($5F, $45, $68, $65, $6C, $6C, $6F, $42, $30, $31, $44, $01, $02, $03, $04, $FF);
   var e:= c.Encode_ByteString;
@@ -929,7 +929,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_3;
 begin
-  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.']);
+  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], True);
 
   var d:= TBytes.Create(
     $5F, $58, $28, $52, $65, $74, $75, $72, $6E, $20, $56, $61, $6C, $75, $65, $20,
@@ -957,7 +957,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeUtf8_1;
 begin
-  var c:= TCbor_UTF8.Create(['Shine on me', 'Everything was going so well until I was accosted by a purple giraffe.', '𝓱𝓪𝓱𝓪']);
+  var c:= TCbor_UTF8.Create(['Shine on me', 'Everything was going so well until I was accosted by a purple giraffe.', '𝓱𝓪𝓱𝓪'], True);
 
   var d:= TBytes.Create(
     $7F, $6B, $53, $68, $69, $6E, $65, $20, $6F, $6E, $20, $6D, $65, $78, $46, $45,
