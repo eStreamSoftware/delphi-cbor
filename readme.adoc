@@ -1,1 +1,11 @@
 == Introduction
+CBOR basic implementation in Delphi
+References:
+- https://cbor.me/
+- https://cbor.nemo157.com/
+- https://www.rfc-editor.org/rfc/rfc7049
+
+== Known Problem
+- Negative integer (major type 1) is not fully implemented due to limitation of the integral Delphi type Int64. Hence, this code does not support negative integer lower than -2^63.
+- Big Number and Negative Big Number (major type 6) is not supported.
+- Encoding of semantic type and special type is not supported.
