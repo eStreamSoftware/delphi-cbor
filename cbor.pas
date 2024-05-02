@@ -20,12 +20,21 @@ type
     FIsIndefiniteLength: Boolean;
     FValue: TBytes;
     FType: TCborDataType;
+    function GetValueCount: Integer;
+    function GetPayload: TBytes;
+    function GetPayloadCount: Integer;
   public
-    function Value: TBytes;
-    function cborType: TCborDataType;
-    class operator Implicit(a: TCborItem): UInt64;
+    class operator Implicit(a: TCborItem): Boolean;
+    class operator Implicit(a: TCborItem): Extended;
     class operator Implicit(a: TCborItem): Int64;
     class operator Implicit(a: TCborItem): string;
+    class operator Implicit(a: TCborItem): Variant;
+    function SameAs(aCbor: TCborItem): Boolean;
+    property cborType: TCborDataType read FType;
+    property Value: TBytes read FValue;
+    property ValueCount: Integer read GetValueCount;
+    property Payload: TBytes read GetPayload;
+    property PayloadCount: Integer read GetPayloadCount;
   end;
 
   TCbor_UInt64 = record
@@ -34,12 +43,12 @@ type
     FType: TCborDataType;
   public
     constructor Create(V: UInt64);
-    function Encode_Uint64: TBytes;
-    function Value: UInt64;
-    function cborType: TCborDataType;
     class operator Implicit(a: TCbor_UInt64): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_UInt64;
     class operator Implicit(a: TCbor_UInt64): UInt64;
+    function Encode_Uint64: TBytes;
+    property Value: UInt64 read FValue;
+    property cborType: TCborDataType read FType;
   end;
 
   TCbor_Int64 = record
@@ -48,12 +57,12 @@ type
     FType: TCborDataType;
   public
     constructor Create(V: Int64);
-    function Encode_Int64: TBytes;
-    function Value: Int64;
-    function cborType: TCborDataType;
     class operator Implicit(aCbor: TCborItem): TCbor_Int64;
     class operator Implicit(a: TCbor_Int64): TCborItem;
     class operator Implicit(a: TCbor_Int64): Int64;
+    function Encode_Int64: TBytes;
+    property Value: Int64 read FValue;
+    property cborType: TCborDataType read FType;
   end;
 
   TCbor_ByteString = record
@@ -63,12 +72,12 @@ type
     FIsIndefiniteLength: Boolean;
   public
     constructor Create(V: TArray<string>; aIsIndefiniteLength: Boolean = false);
-    function Encode_ByteString: TBytes;
-    function Value: TArray<string>;
-    function cborType: TCborDataType;
     class operator Implicit(aCbor: TCborItem): TCbor_ByteString;
     class operator Implicit(a: TCbor_ByteString): TCborItem;
     class operator Implicit(a: TCbor_ByteString): string;
+    function Encode_ByteString: TBytes;
+    property Value: TArray<string> read FValue;
+    property CborType: TCborDataType read FType;
   end;
 
   TCbor_UTF8 = record
@@ -78,27 +87,30 @@ type
     FIsIndefiniteLength: Boolean;
   public
     constructor Create(V: TArray<string>; aIsIndefiniteLength: Boolean = false);
-    function Encode_UTF8: TBytes;
-    function Value: TArray<string>;
-    function cborType: TCborDataType;
     class operator Implicit(a: TCbor_UTF8): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_UTF8;
     class operator Implicit(a: TCbor_UTF8): string;
+    function Encode_UTF8: TBytes;
+    property Value: TArray<string> read FValue;
+    property CborType: TCborDataType read FType;
   end;
 
   TCbor_Array = record
   private
-    FValue: TArray<TCborItem>;
+    FValue: TArray<TCBorItem>;
     FType: TCborDataType;
     FIsIndefiniteLength: Boolean;
+    function GetCount: Integer;
+    function GetValues(Index: Integer): TCBorItem;
   public
     constructor Create(V: TArray<TCborItem>; aIsIndefiniteLength: Boolean = false);
-    function Encode_Array: TBytes;
-    function Value: TArray<TCborItem>;
-    function cborType: TCborDataType;
     class operator Implicit(a: TCbor_Array): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_Array;
     class operator Implicit(a: TCbor_Array): TArray<TCborItem>;
+    function Encode_Array: TBytes;
+    property Values[Index: Integer]: TCBorItem read GetValues;
+    property CborType: TCborDataType read FType;
+    property Count: Integer read GetCount;
   end;
 
   TCbor_Map = record
@@ -106,14 +118,27 @@ type
     FValue: TArray<TPair<TCborItem, TCborItem>>;
     FType: TCborDataType;
     FIsIndefiniteLength: Boolean;
+    function GetCount: Integer;
+    function GetValues(IndexOrName: OleVariant): TPair<TCborItem, TCborItem>;
+    function GetValueByInt64Key(aKey: Int64): TCborItem;
+    function GetValueByStrKey(aKey: String): TCborItem;
+    function GetValueByUInt64Key(aKey: UInt64): TCborItem;
   public
     constructor Create(V: TArray<TPair<TCborItem, TCborItem>>; aIsIndefiniteLength:
         Boolean = false);
-    function Encode_Map: TBytes;
-    function Value: TArray<TPair<TCborItem, TCborItem>>;
-    function cborType: TCborDataType;
     class operator Implicit(a: TCbor_Map): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_Map;
+    function ContainsKey(aKey: String): Boolean; overload;
+    function ContainsKey(aKey: Int64): Boolean; overload;
+    function ContainsKey(aKey: String; out Index: Integer): Boolean; overload;
+    function Encode_Map: TBytes;
+    function IndexOf(aKey: String): Integer;
+    property CborType: TCborDataType read FType;
+    property Count: Integer read GetCount;
+    property ValueByKey[aKey: Int64]: TCborItem read GetValueByInt64Key; default;
+    property ValueByKey[aKey: String]: TCborItem read GetValueByStrKey; default;
+    property ValueByKey[aKey: UInt64]: TCborItem read GetValueByUInt64Key; default;
+    property Values[IndexOrName: OleVariant]: TPair<TCborItem, TCborItem> read GetValues;
   end;
 
   TCbor_Semantic = record
@@ -123,10 +148,6 @@ type
     FTag: TCborSemanticTag;
   public
     constructor Create(V: TBytes; T: TCborSemanticTag);
-    function Encode_Semantic: TBytes;
-    function Value: TBytes;
-    function cborType: TCborDataType;
-    function Tag: TCborSemanticTag;
     class operator Implicit(a: TCbor_Semantic): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_Semantic;
     class operator Implicit(a: TCbor_Semantic): string;
@@ -134,6 +155,10 @@ type
     class operator Implicit(a: TCbor_Semantic): UInt64;
     class operator Implicit(a: TCbor_Semantic): Int64;
     class operator Implicit(a: TCbor_Semantic): Extended;
+    function Encode_Semantic: TBytes;
+    property Value: TBytes read FValue;
+    property CborType: TCborDataType read FType;
+    property Tag: TCborSemanticTag read FTag;
   end;
 
   TCbor_Special = record
@@ -143,13 +168,15 @@ type
     FTag: TCborSpecialTag;
   public
     constructor Create(V: TBytes; T: TCborSpecialTag);
-    function Value: TBytes;
     class operator Implicit(a: TCbor_Special): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_Special;
     class operator Implicit(a: TCbor_Special): Boolean;
     class operator Implicit(a: TCbor_Special): Variant;
     class operator Implicit(a: TCbor_Special): Extended;
     class operator Implicit(a: TCbor_Special): string;
+    property Value: TBytes read FValue;
+    property CborType: TCborDataType read FType;
+    property Tag: TCborSpecialTag read FTag;
   end;
 
   TCbor = record
@@ -249,6 +276,7 @@ begin
 end;
 
 function TCbor.AsMap: TCbor_Map;
+var Key, Value: TCborItem;
 begin
   Assert(Length(FData) - FIndex >= DataItemSize, 'Out of bytes to decode.');
   Assert(DataType = cborMap, 'Major type unmatched.');
@@ -261,11 +289,11 @@ begin
   if l = IndefiniteLength then begin
     Result.FIsIndefiniteLength := True;
     while FData[n] <> BreakCode do begin
-      var Key := DecodeCbor(n);
+      Key := DecodeCbor(n);
       if n >= Length(FData) then raise Exception.Create('Out of bytes to decode.');     // End of data before break code
       if FData[n] = BreakCode then raise Exception.Create('Break stop code outside indefinite length item');   // Break code after "Key" (Missing "Value")
 
-      var Value := DecodeCbor(n);
+      Value := DecodeCbor(n);
       if n >= Length(FData) then raise Exception.Create('Out of bytes to decode.');     // End of data before break code
 
       Result.FValue := Result.FValue + [TPair<TCborItem, TCborItem>.Create(Key, Value)];
@@ -277,8 +305,8 @@ begin
     end;
     SetLength(Result.FValue, l);
     for var i := 0 to l - 1 do begin
-      var Key := DecodeCbor(n);
-      var Value := DecodeCbor(n);
+      Key := DecodeCbor(n);
+      Value := DecodeCbor(n);
       Result.FValue[i] := TPair<TCborItem, TCborItem>.Create(Key, Value);
     end;
   end;
@@ -313,10 +341,10 @@ end;
 
 function TCbor.AsIndefiniteLengthString: TArray<string>;
 begin
-  var n : Integer := FIndex + 1;
+  var n := FIndex + 1;
   while FData[n] <> BreakCode do
     if (TCborDataType(FData[n] shr 5) = DataType) then begin
-      var c := TCbor.Create(Copy(FData, n, DataItemSize - 1));
+      var c := TCbor.Create(Copy(FData, n, DataItemSize - 1 - n));
       c.FIndex := 0;
       if (c.FData[0] and ShortCountBit) = IndefiniteLength then begin
         var tempR := c.AsIndefiniteLengthString;
@@ -363,10 +391,10 @@ begin
 end;
 
 function TCbor.DataItemSize: Integer;
+var c : TCbor;
 begin
   Result := 1;
   var i := FData[FIndex] and ShortCountBit;
-  var c : TCbor;
   var l := function(aResult, aIndex: Integer; aCbor: TCbor): Integer     // to calculate size of indefinite length cbor
   begin
     Result := aResult;
@@ -483,7 +511,7 @@ end;
 
 function TCbor.ExtendedCount: Integer;
 begin
-  var A := TArray<Byte>.Create(0, 1, 2, 4, 8);
+  var A := TArray<Byte>.Create(0, 1, 2, 4, 8, 0, 0, 0);
   var i := FData[FIndex] and ShortCountBit;
   if i <= MaxShortCount then i := MaxShortCount;
   Result := A[i - MaxShortCount];
@@ -533,16 +561,6 @@ begin
   Result := TCbor.Encode(FValue, FType, False, []);
 end;
 
-function TCbor_UInt64.Value: UInt64;
-begin
-  Result := FValue;
-end;
-
-function TCbor_UInt64.cborType: TCborDataType;
-begin
-  Result := FType;
-end;
-
 class operator TCbor_UInt64.Implicit(a: TCbor_UInt64): TCborItem;
 begin
   Result.FValue := a.Encode_uint64;
@@ -574,16 +592,6 @@ end;
 function TCbor_Int64.Encode_Int64: TBytes;
 begin
   Result := TCbor.Encode(-1-FValue, FType, False, []);
-end;
-
-function TCbor_Int64.Value: Int64;
-begin
-  Result := FValue;
-end;
-
-function TCbor_Int64.cborType: TCborDataType;
-begin
-  Result := FType;
 end;
 
 class operator TCbor_Int64.Implicit(a: TCbor_Int64): TCborItem;
@@ -631,16 +639,6 @@ begin
     Result := TCbor.Encode(0, FType, FIsIndefiniteLength, a(Self))
   else
     Result := a(Self);
-end;
-
-function TCbor_ByteString.Value: TArray<string>;
-begin
-  Result := FValue;
-end;
-
-function TCbor_ByteString.cborType: TCborDataType;
-begin
-  Result := FType;
 end;
 
 class operator TCbor_ByteString.Implicit(aCbor: TCborItem): TCbor_ByteString;
@@ -699,16 +697,6 @@ begin
     Result := a(Self);
 end;
 
-function TCbor_UTF8.Value: TArray<string>;
-begin
-  Result := FValue;
-end;
-
-function TCbor_UTF8.cborType: TCborDataType;
-begin
-  Result := FType;
-end;
-
 class operator TCbor_UTF8.Implicit(a: TCbor_UTF8): TCborItem;
 begin
   Result.FValue := a.Encode_UTF8;
@@ -749,21 +737,21 @@ function TCbor_Array.Encode_Array: TBytes;
 begin
   var a := Function(aArr: TCbor_Array): TBytes
   begin
-    for var i := 0 to Length(aArr.FValue)-1 do
-      Result := Result + aArr.FValue[i].Value;
+    for var i in aArr.FValue do
+      Result := Result + i.Value;
   end;
 
   Result := TCbor.Encode(Length(FValue), FType, FIsIndefiniteLength, a(Self));
 end;
 
-function TCbor_Array.Value: TArray<TCborItem>;
+function TCbor_Array.GetCount: Integer;
 begin
-  Result := FValue;
+  Result := Length(FValue);
 end;
 
-function TCbor_Array.cborType: TCborDataType;
+function TCbor_Array.GetValues(Index: Integer): TCBorItem;
 begin
-  Result := FType;
+  Result := FValue[Index];
 end;
 
 class operator TCbor_Array.Implicit(a: TCbor_Array): TCborItem;
@@ -795,25 +783,83 @@ begin
   FType := cborMap;
 end;
 
+function TCbor_Map.ContainsKey(aKey: String): Boolean;
+begin
+  Result := IndexOf(aKey) >= 0;
+end;
+
+function TCbor_Map.ContainsKey(aKey: Int64): Boolean;
+begin
+  for var i in FValue do
+    if (i.Key.cborType = cborUnsigned) or (i.Key.cborType = cborSigned) then
+      if Int64(i.Key) = aKey then
+         Exit(True);
+  Result := False;
+end;
+
+function TCbor_Map.ContainsKey(aKey: String; out Index: Integer): Boolean;
+begin
+  Index := IndexOf(aKey);
+  Result := Index >= 0;
+end;
+
 function TCbor_Map.Encode_Map: TBytes;
 begin
   var a := Function(aMap : TCbor_Map): TBytes
   begin
-    for var i := 0 to Length(aMap.FValue)-1 do
-      Result := Result + aMap.FValue[i].Key.Value + aMap.FValue[i].Value.Value;
+    for var i in aMap.FValue do
+      Result := Result + i.Key.Value + i.Value.Value;
   end;
 
   Result := TCbor.Encode(Length(FValue), FType, FIsIndefiniteLength, a(Self));
 end;
 
-function TCbor_Map.Value: TArray<TPair<TCborItem, TCborItem>>;
+function TCbor_Map.GetCount: Integer;
 begin
-  Result := FValue;
+  Result := Length(FValue);
 end;
 
-function TCbor_Map.cborType: TCborDataType;
+function TCbor_Map.GetValueByStrKey(aKey: String): TCborItem;
 begin
-  Result := FType;
+  var i : Integer;
+  Assert(ContainsKey(aKey, i), 'Key not found in map.');
+  Result := FValue[i].Value;
+end;
+
+function TCbor_Map.GetValueByInt64Key(aKey: Int64): TCborItem;
+begin
+  for var i in FValue do
+    if (i.Key.cborType = cborUnsigned) or (i.Key.cborType = cborSigned) then
+      if Int64(i.Key) = aKey then
+        Exit(i.Value);
+  Assert(False, 'Key not found in map.');
+end;
+
+function TCbor_Map.GetValueByUInt64Key(aKey: UInt64): TCborItem;
+begin
+  for var i in FValue do
+    if (i.Key.cborType = cborUnsigned) then
+      if TCbor_UInt64(i.Key).Value = aKey then
+        Exit(i.Value);
+  Assert(False, 'Key not found in map.');
+end;
+
+function TCbor_Map.GetValues(IndexOrName: OleVariant): TPair<TCborItem,
+    TCborItem>;
+begin
+  if VarType(IndexOrName) = varInteger then
+     Result := FValue[Integer(IndexOrName)]
+  else
+     Result := FValue[IndexOf(IndexOrName)];
+end;
+
+function TCbor_Map.IndexOf(aKey: String): Integer;
+begin
+  Result := -1;
+  for var i := 0 to Length(FValue) - 1 do
+    if (FValue[i].Key.cborType = cborByteString) or (FValue[i].Key.cborType = cborUTF8) then
+      if FValue[i].Key = aKey then
+        Exit(i);
 end;
 
 class operator TCbor_Map.Implicit(a: TCbor_Map): TCborItem;
@@ -832,12 +878,55 @@ end;
 
 { TCborItem }
 
-class operator TCborItem.Implicit(a: TCborItem): UInt64;
+function TCborItem.GetValueCount: Integer;
+begin
+  var a := TCbor(FValue);
+  if a.Next then
+    Result := a.DataItemSize
+  else
+    Result := -1;
+end;
+
+class operator TCborItem.Implicit(a: TCborItem): Extended;
 begin
   var c := TCbor.Create(a.FValue);
-  if c.Next and (a.cborType = cborUnsigned) then
-    Result := c.AsUInt64.Value
-  else raise Exception.Create('Invalid conversion.');
+  Assert((c.Next and (a.cborType = cborSpecial)), 'Invalid conversion.');
+  Result := c.AsSpecial;
+end;
+
+class operator TCborItem.Implicit(a: TCborItem): Boolean;
+begin
+  var c := TCbor.Create(a.FValue);
+  Assert((c.Next and (a.cborType = cborSpecial)), 'Invalid conversion.');
+  Result := c.AsSpecial;
+end;
+
+function TCborItem.GetPayload: TBytes;
+begin
+  SetLength(Result, PayloadCount);
+  Result := Copy(FValue, ValueCount - PayloadCount, PayloadCount);
+end;
+
+function TCborItem.GetPayloadCount: Integer;
+begin
+  var a := TCbor(FValue);
+  if a.Next then
+     Result := a.DataItemSize - a.ExtendedCount - 1
+  else
+     Result := 0;
+end;
+
+function TCborItem.SameAs(aCbor: TCborItem): Boolean;
+begin
+  Result := False;
+  if PayloadCount = aCbor.PayloadCount then begin
+    Result := True;
+    for var i := 0 to PayloadCount -1 do begin
+      if FValue[i] <> aCbor.FValue[i] then
+        Result := False;
+      break;
+    end;
+  end;
 end;
 
 class operator TCborItem.Implicit(a: TCborItem): string;
@@ -848,7 +937,9 @@ begin
       Result := c.AsByteString
     else if a.cborType = cborUTF8 then
       Result := c.AsUTF8
-    else raise Exception.Create('Invalid conversion.')
+    else if a.cborType = cborSpecial then
+      Result := c.AsSpecial
+    else raise Exception.CreateFmt('Invalid conversion from major type %d to string', [Ord(a.cborType)])
   else raise Exception.Create('Invalid conversion.');
 end;
 
@@ -856,18 +947,17 @@ class operator TCborItem.Implicit(a: TCborItem): Int64;
 begin
   var c := TCbor.Create(a.FValue);
   if c.Next and (a.cborType = cborSigned) then
-    Result := c.AsInt64.Value
+     Result := c.AsInt64.Value
+  else if a.cborType = cborUnsigned then
+     Result := Int64(c.AsUInt64.Value)
   else raise Exception.Create('Invalid conversion.');
 end;
 
-function TCborItem.Value: TBytes;
+class operator TCborItem.Implicit(a: TCborItem): Variant;
 begin
-  Result := FValue;
-end;
-
-function TCborItem.cborType: TCborDataType;
-begin
-  Result := FType;
+  var c := TCbor.Create(a.FValue);
+  Assert((c.Next and (a.cborType = cborSpecial)), 'Invalid conversion.');
+  Result := c.AsSpecial;
 end;
 
 { TCbor_Semantic }
@@ -884,9 +974,9 @@ begin
 end;
 
 class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): TBcd;
+var base : Integer;
 begin
   // for decimal and big float
-  var base : Integer;
   if a.FTag = decimal then
     base := 10
   else if a.FTag = bigFloat then
@@ -898,9 +988,9 @@ begin
   var arr := c.AsArray.FValue;
   var arrInt64 := TArray<Int64>.Create();
   for var i := 0 to 1 do
-    if arr[i].cborType = cborUnsigned then
+    if arr[i].CborType = cborUnsigned then
       arrInt64 := arrInt64 + [TCbor_UInt64(arr[i]).Value]
-    else if arr[i].cborType = cborSigned then
+    else if arr[i].CborType = cborSigned then
       arrInt64 := arrInt64 + [TCbor_Int64(arr[i]).Value]
     else
       raise Exception.Create('Invalid conversion.');
@@ -909,10 +999,10 @@ begin
 end;
 
 class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): string;
+var t, c : TCbor;
 begin
-  var t := TCbor.Create(a.Value);
-  var c : TCbor;
-  if t.Next then 
+  t := TCbor.Create(a.Value);
+  if t.Next then
     c := TCbor.Create(Copy(a.Value, t.ExtendedCount + 1, Length(a.Value) - t.ExtendedCount - 1));
 
   if not c.Next then raise Exception.Create('No data load');
@@ -925,21 +1015,6 @@ begin
   else if c.DataType = cborUTF8 then
     Result := c.AsUTF8.Value[0]
   else raise Exception.Create('Invalid conversion.');
-end;
-
-function TCbor_Semantic.Value: TBytes;
-begin
-  Result := FValue;
-end;
-
-function TCbor_Semantic.Tag: TCborSemanticTag;
-begin
-  Result:= FTag;
-end;
-
-function TCbor_Semantic.cborType: TCborDataType;
-begin
-  Result := cborType;
 end;
 
 class operator TCbor_Semantic.Implicit(a: TCbor_Semantic): TCborItem;
@@ -1015,16 +1090,17 @@ begin
 end;
 
 class operator TCbor_Special.Implicit(a: TCbor_Special): Extended;
+var Pow2: TArray<Int64>;
+    exponent, mantissa: Extended;
 begin
   if (Ord(a.FTag) < Ord(TCborSpecialTag.cbor16bitFloat)) or (Ord(a.FTag) > Ord(TCborSpecialTag.cbor64bitFloat))
     then raise Exception.Create('Tag unmatched.');
 
-  var Pow2 : TArray<Int64>;
   for var i := 0 to 63 do Pow2 := Pow2 + [Int64(1) shl i];
 
   var BinaryBits := TBits.Create();
-  var exponent: Extended := 0;
-  var mantissa: Extended := 0;
+  exponent := 0;
+  mantissa := 0;
   var exponentLength := 2 + 3 * (Ord(a.FTag) - 24);    // 5, 8, 11
   try
     BinaryBits.Size := pow2[Ord(a.FTag) - 21];           // 2, 4, 8
@@ -1082,11 +1158,6 @@ class operator TCbor_Special.Implicit(a: TCbor_Special): Variant;
 begin
   if a.FTag = cborNull then Result := Null
   else raise Exception.Create('Invalid conversion.');
-end;
-
-function TCbor_Special.Value: TBytes;
-begin
-  Result := FValue;
 end;
 
 class operator TCbor_Special.Implicit(a: TCbor_Special): string;
