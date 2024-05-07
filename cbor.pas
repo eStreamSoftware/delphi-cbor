@@ -106,9 +106,8 @@ type
     constructor Create(V: TArray<TCborItem>; aIsIndefiniteLength: Boolean = false);
     class operator Implicit(a: TCbor_Array): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_Array;
-    class operator Implicit(a: TCbor_Array): TArray<TCborItem>;
     function Encode_Array: TBytes;
-    property Values[Index: Integer]: TCBorItem read GetValues;
+    property Values[Index: Integer]: TCBorItem read GetValues; default;
     property CborType: TCborDataType read FType;
     property Count: Integer read GetCount;
   end;
@@ -120,9 +119,6 @@ type
     FIsIndefiniteLength: Boolean;
     function GetCount: Integer;
     function GetValues(IndexOrName: OleVariant): TPair<TCborItem, TCborItem>;
-    function GetValueByInt64Key(aKey: Int64): TCborItem;
-    function GetValueByStrKey(aKey: String): TCborItem;
-    function GetValueByUInt64Key(aKey: UInt64): TCborItem;
   public
     constructor Create(V: TArray<TPair<TCborItem, TCborItem>>; aIsIndefiniteLength:
         Boolean = false);
@@ -131,14 +127,15 @@ type
     function ContainsKey(aKey: String): Boolean; overload;
     function ContainsKey(aKey: Int64): Boolean; overload;
     function ContainsKey(aKey: String; out Index: Integer): Boolean; overload;
+    function ContainsKey(aKey: UInt64): Boolean; overload;
     function Encode_Map: TBytes;
     function IndexOf(aKey: String): Integer;
+    function ValueByKey(aKey: Int64): TCborItem; overload;
+    function ValueByKey(aKey: String): TCborItem; overload;
+    function ValueByKey(aKey: UInt64): TCborItem; overload;
     property CborType: TCborDataType read FType;
     property Count: Integer read GetCount;
-    property ValueByKey[aKey: Int64]: TCborItem read GetValueByInt64Key; default;
-    property ValueByKey[aKey: String]: TCborItem read GetValueByStrKey; default;
-    property ValueByKey[aKey: UInt64]: TCborItem read GetValueByUInt64Key; default;
-    property Values[IndexOrName: OleVariant]: TPair<TCborItem, TCborItem> read GetValues;
+    property Values[IndexOrName: OleVariant]: TPair<TCborItem, TCborItem> read GetValues; default;
   end;
 
   TCbor_Semantic = record
@@ -768,11 +765,6 @@ begin
     Result := a.AsArray;
 end;
 
-class operator TCbor_Array.Implicit(a: TCbor_Array): TArray<TCborItem>;
-begin
-  Result := a.FValue;
-end;
-
 { TCbor_Map }
 
 constructor TCbor_Map.Create(V: TArray<TPair<TCborItem, TCborItem>>;
@@ -803,6 +795,15 @@ begin
   Result := Index >= 0;
 end;
 
+function TCbor_Map.ContainsKey(aKey: UInt64): Boolean;
+begin
+  for var i in FValue do
+    if i.Key.cborType = cborUnsigned then
+      if UInt64(TCbor_UInt64(i.Key)) = aKey then
+         Exit(True);
+  Result := False;
+end;
+
 function TCbor_Map.Encode_Map: TBytes;
 begin
   var a := Function(aMap : TCbor_Map): TBytes
@@ -819,14 +820,14 @@ begin
   Result := Length(FValue);
 end;
 
-function TCbor_Map.GetValueByStrKey(aKey: String): TCborItem;
+function TCbor_Map.ValueByKey(aKey: String): TCborItem;
 begin
   var i : Integer;
   Assert(ContainsKey(aKey, i), 'Key not found in map.');
   Result := FValue[i].Value;
 end;
 
-function TCbor_Map.GetValueByInt64Key(aKey: Int64): TCborItem;
+function TCbor_Map.ValueByKey(aKey: Int64): TCborItem;
 begin
   for var i in FValue do
     if (i.Key.cborType = cborUnsigned) or (i.Key.cborType = cborSigned) then
@@ -835,7 +836,7 @@ begin
   Assert(False, 'Key not found in map.');
 end;
 
-function TCbor_Map.GetValueByUInt64Key(aKey: UInt64): TCborItem;
+function TCbor_Map.ValueByKey(aKey: UInt64): TCborItem;
 begin
   for var i in FValue do
     if (i.Key.cborType = cborUnsigned) then

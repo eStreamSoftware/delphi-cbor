@@ -1348,7 +1348,7 @@ begin
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
   CheckEquals(8, c.DataItemSize);
-  var ans : TArray<TCborItem> := c.AsArray;
+  var ans := c.AsArray;
   CheckEquals(1,              ans[0]);
   CheckEquals('hello',        ans[1]);
 
@@ -1362,11 +1362,11 @@ begin
   CheckTrue(c.Next);
   Check(cborArray = c.DataType);
   CheckEquals(5, c.DataItemSize);
-  var ans : TArray<TCborItem> := c.AsArray;
+  var ans := c.AsArray;
 
   CheckEquals(1, ans[0]);
-  CheckEquals(2, TCbor_Array(ans[1]).Values[0]);
-  CheckEquals(3, TCbor_Array(ans[1]).Values[1]);
+  CheckEquals(2, TCbor_Array(ans[1])[0]);
+  CheckEquals(3, TCbor_Array(ans[1])[1]);
 
   CheckFalse(c.Next);
 end;
@@ -1399,36 +1399,36 @@ begin
   Check(cborArray = c.DataType);
   CheckEquals(89, c.DataItemSize);
   var ans := c.AsArray;
-  CheckEquals(1,                     ans.Values[0]);
-  CheckEquals(2,                     ans.Values[1]);
-  CheckEquals(3,                     ans.Values[2]);
-  CheckEquals(4,                     ans.Values[3]);
-  CheckEquals(5,                     ans.Values[4]);
-  CheckEquals('hi',                  ans.Values[5]);
-  CheckEquals('乃乇',                ans.Values[6]);
-  CheckEquals(-22,                   ans.Values[7]);
-  CheckEquals(-222,                  ans.Values[8]);
+  CheckEquals(1,                     ans[0]);
+  CheckEquals(2,                     ans[1]);
+  CheckEquals(3,                     ans[2]);
+  CheckEquals(4,                     ans[3]);
+  CheckEquals(5,                     ans[4]);
+  CheckEquals('hi',                  ans[5]);
+  CheckEquals('乃乇',                ans[6]);
+  CheckEquals(-22,                   ans[7]);
+  CheckEquals(-222,                  ans[8]);
   var b := TCborItem(TCbor_Array.Create([TCbor_Uint64.Create(1), TCbor_Uint64.Create(2)]));
-  CheckTrue(b.SameAs(ans.Values[9]));
-  CheckEquals(1,                     TCbor_Array(ans.Values[9]).Values[0]);
-  CheckEquals(2,                     TCbor_Array(ans.Values[9]).Values[1]);
-  CheckEquals(300,                   ans.Values[10]);
-  CheckEquals(600,                   ans.Values[11]);
-  CheckEquals(900,                   ans.Values[12]);
-  CheckEquals(-1200,                 ans.Values[13]);
-  CheckEquals('BTS',                 ans.Values[14]);
-  CheckEquals('Go',                  c.AsArray.Values[15]);
-  CheckEquals('your',                ans.Values[16]);
-  CheckEquals('own',                 ans.Values[17]);
-  CheckEquals('way',                 ans.Values[18]);
-  CheckEquals('Put',                 TCbor_Array(ans.Values[19]).Values[0]);
-  CheckEquals('weakness',            TCbor_Array(ans.Values[19]).Values[1]);
-  CheckEquals('away',                TCbor_Array(ans.Values[19]).Values[2]);
-  CheckEquals(2013,                  TCbor_Array(ans.Values[19]).Values[3]);
-  CheckEquals(21,                    ans.Values[20]);
-  CheckEquals(22,                    ans.Values[21]);
-  Check(SameValue(3.141592653589793, ans.Values[22]));
-  CheckTrue(                         ans.Values[23]);
+  CheckTrue(b.SameAs(ans[9]));
+  CheckEquals(1,                     TCbor_Array(ans[9])[0]);
+  CheckEquals(2,                     TCbor_Array(ans[9])[1]);
+  CheckEquals(300,                   ans[10]);
+  CheckEquals(600,                   ans[11]);
+  CheckEquals(900,                   ans[12]);
+  CheckEquals(-1200,                 ans[13]);
+  CheckEquals('BTS',                 ans[14]);
+  CheckEquals('Go',                  c.AsArray[15]);
+  CheckEquals('your',                ans[16]);
+  CheckEquals('own',                 ans[17]);
+  CheckEquals('way',                 ans[18]);
+  CheckEquals('Put',                 TCbor_Array(ans[19])[0]);
+  CheckEquals('weakness',            TCbor_Array(ans[19])[1]);
+  CheckEquals('away',                TCbor_Array(ans[19])[2]);
+  CheckEquals(2013,                  TCbor_Array(ans[19])[3]);
+  CheckEquals(21,                    ans[20]);
+  CheckEquals(22,                    ans[21]);
+  Check(SameValue(3.141592653589793, ans[22]));
+  CheckTrue(                         ans[23]);
 
   CheckFalse(c.Next);
 end;
@@ -1442,9 +1442,9 @@ begin
   CheckEquals(14, c.DataItemSize);
 
   var ans := c.AsArray;
-  CheckEquals('simple(16)', ans.Values[0]);
-  CheckEquals('hello',      ans.Values[1]);
-  Check(273.15 =            TBcd(TCbor_Semantic(ans.Values[2])));
+  CheckEquals('simple(16)', ans[0]);
+  CheckEquals('hello',      ans[1]);
+  Check(273.15 =            TBcd(TCbor_Semantic(ans[2])));
 
   CheckFalse(c.Next);
 end;
@@ -1459,13 +1459,13 @@ begin
   Check(cborArray = c.DataType);
   CheckEquals(17, c.DataItemSize);
 
-  var ans : TArray<TCborItem> := c.AsArray;
+  var ans := c.AsArray;
   CheckEquals(1,              ans[0]);
   CheckEquals('hello',        ans[1]);
-  CheckEquals(1,              TCbor_Array(ans[2]).Values[0]);
-  CheckEquals(2,              TCbor_Array(ans[2]).Values[1]);
-  CheckEquals(1,              TCbor_Array(TCbor_Array(ans[3]).Values[0]).Values[0]);
-  CheckEquals(2,              TCbor_Array(TCbor_Array(ans[3]).Values[0]).Values[1]);
+  CheckEquals(1,              TCbor_Array(ans[2])[0]);
+  CheckEquals(2,              TCbor_Array(ans[2])[1]);
+  CheckEquals(1,              TCbor_Array(TCbor_Array(ans[3])[0])[0]);
+  CheckEquals(2,              TCbor_Array(TCbor_Array(ans[3])[0])[1]);
 
   CheckFalse(c.Next);
 end;
@@ -1502,10 +1502,8 @@ begin
   CheckEquals(11, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals('t',    ans.Values[0].Key);
-  CheckEquals(1234,   ans.Values[0].Value);
-  CheckEquals('l',    ans.Values[1].Key);
-  CheckEquals(2345,   ans.Values[1].Value);
+  CheckEquals(1234,   ans['t'].Value);
+  CheckEquals(2345,   ans['l'].Value);
 
   CheckFalse(c.Next);
 end;
@@ -1523,43 +1521,41 @@ begin
   CheckEquals(44, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals(1,         ans.Values[0].Key);
-  CheckEquals('JJK',     ans.Values[0].Value);
-  CheckEquals(2,         ans.Values[1].Key);
-  CheckEquals(-1000000,  ans.Values[1].Value);
-//  CheckEquals('key',     ans.Values[2].Key);
-  CheckEquals('ｖａｌｕｅ',   ans.Values['key'].Value);
-  CheckEquals('array',   ans.Values[3].Key);
-  var a : TCbor_Array := ans.Values[3].Value;
-  CheckEquals(1, a.Values[0]);
-  CheckEquals(2, a.Values[1]);
-  CheckEquals(3, a.Values[2]);
-  CheckEquals(4, a.Values[3]);
-  CheckEquals(5, a.Values[4]);
+  CheckEquals(1,         ans[0].Key);
+  CheckEquals('JJK',     ans[0].Value);
+  CheckEquals(2,         ans[1].Key);
+  CheckEquals(-1000000,  ans[1].Value);
+  CheckEquals('key',     ans[2].Key);
+  CheckEquals('ｖａｌｕｅ', ans['key'].Value);
+  CheckEquals('array',   ans[3].Key);
+  var a : TCbor_Array := ans[3].Value;
+  CheckEquals(1, a[0]);
+  CheckEquals(2, a[1]);
+  CheckEquals(3, a[2]);
+  CheckEquals(4, a[3]);
+  CheckEquals(5, a[4]);
 
   CheckFalse(c.Next);
 end;
 
 procedure TTestCase_cbor.Test_Map_2;
 begin
-  var c: TCbor := [
-    $A3, $01, $02, $03, $A2, $18, $1F, $0D, $18, $20, $17, $04, $05
-  ];
+  var c: TCbor := [$A3, $01, $02, $03, $A2, $18, $1F, $0D, $18, $20, $17, $04, $05];
 
   CheckTrue(c.Next);
   Check(cborMap = c.DataType);
   CheckEquals(13, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals(1,      ans.Values[0].Key);
-  CheckEquals(2,      ans.Values[0].Value);
-  CheckEquals(3,      ans.Values[1].Key);
-  CheckEquals(31,     TCbor_Map(ans.Values[1].Value).Values[0].Key);
-  CheckEquals(13,     TCbor_Map(ans.Values[1].Value).Values[0].Value);
-  CheckEquals(32,     TCbor_Map(ans.Values[1].Value).Values[1].Key);
-  CheckEquals(23,     TCbor_Map(ans.Values[1].Value).Values[1].Value);
-  CheckEquals(4,      ans.Values[2].Key);
-  CheckEquals(5,      ans.Values[2].Value);
+  CheckEquals(1,      ans[0].Key);
+  CheckEquals(2,      ans[0].Value);
+  CheckEquals(3,      ans[1].Key);
+  CheckEquals(31,     TCbor_Map(ans[1].Value)[0].Key);
+  CheckEquals(13,     TCbor_Map(ans[1].Value)[0].Value);
+  CheckEquals(32,     TCbor_Map(ans[1].Value)[1].Key);
+  CheckEquals(23,     TCbor_Map(ans[1].Value)[1].Value);
+  CheckEquals(4,      ans[2].Key);
+  CheckEquals(5,      ans[2].Value);
 
   CheckFalse(c.Next);
 end;
@@ -1592,51 +1588,51 @@ begin
   Check(cborMap = c.DataType);
   CheckEquals(303, c.DataItemSize);
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals('No. 1',           ans.Values[0].Key);             CheckEquals('No. 1',              ans.Values[0].Value);       CheckEquals('No. 1',                  ans.ValueByKey['No. 1']);
+  CheckEquals('No. 1',           ans[0].Key);             CheckEquals('No. 1',              ans[0].Value);       CheckEquals('No. 1',                  ans.ValueByKey('No. 1'));
   CheckTrue(ans.ContainsKey(2));
-  CheckEquals(2,                 ans.Values[1].Key);             CheckEquals(2,                    ans.Values[1].Value);       CheckEquals(2,                        ans.ValueByKey[2]);
-  CheckEquals(3,                 ans.Values[2].Key);             CheckEquals(3,                    ans.Values[2].Value);       CheckEquals(3,                        ans.ValueByKey[3]);
-  CheckEquals('name',            ans.Values[3].Key);             CheckEquals('Erkin Qadir',        ans.Values[3].Value);       CheckEquals('Erkin Qadir',            ans.ValueByKey['name']);
-  CheckEquals('isoCode',         ans.Values[4].Key);             CheckEquals('AQ',                 ans.Values[4].Value);       CheckEquals('AQ',                     ans.ValueByKey['isoCode']);
-  CheckEquals('WHO',             ans.Values[5].Key);             CheckEquals('Joe',                ans.Values[5].Value);       CheckEquals('Joe',                    ans.ValueByKey['WHO']);
-  CheckEquals('WHAT',            ans.Values[6].Key);             CheckEquals('Car',                ans.Values[6].Value);       CheckEquals('Car',                    ans.ValueByKey['WHAT']);
-  CheckEquals('AMOUNT',          ans.Values[7].Key);             CheckEquals(20,                   ans.Values[7].Value);       CheckEquals(20,                       ans.ValueByKey['AMOUNT']);
-  CheckEquals('fruit',           ans.Values[8].Key);             CheckEquals('Apple',              ans.Values[8].Value);       CheckEquals('Apple',                  ans.ValueByKey['fruit']);
-  CheckEquals('size',            ans.Values[9].Key);             CheckEquals('Large',              ans.Values[9].Value);       CheckEquals('Large',                  ans.ValueByKey['size']);
-  CheckEquals('color',           ans.Values[10].Key);            CheckEquals('Red',                ans.Values[10].Value);      CheckEquals('Red',                    ans.ValueByKey['color']);
-  CheckEquals('key',             ans.Values[11].Key);            CheckEquals('ｖａｌｕｅ',             ans.Values[11].Value);      CheckEquals('ｖａｌｕｅ',                 ans.ValueByKey['key']);
-  CheckEquals('array',           ans.Values[12].Key);                                                                          CheckEquals(5,                        ans.ValueByKey['array'].PayloadCount);
-  CheckEquals(1,                 TCbor_Array(ans.Values[12].Value).Values[0]);
-  CheckEquals(2,                 TCbor_Array(ans.Values[12].Value).Values[1]);
-  CheckEquals(3,                 TCbor_Array(ans.Values[12].Value).Values[2]);
-  CheckEquals(4,                 TCbor_Array(ans.Values[12].Value).Values[3]);
-  CheckEquals(5,                 TCbor_Array(ans.Values[12].Value).Values[4]);
-  CheckEquals('options',         ans.Values[13].Key);                                                                         CheckEquals(8,                        ans.ValueByKey['options'].PayloadCount);
-  CheckEquals(10,                TCbor_Array(ans.Values[13].Value).Values[0]);
-  CheckEquals('11',              TCbor_Array(ans.Values[13].Value).Values[1]);
-  CheckEquals('12',              TCbor_Array(ans.Values[13].Value).Values[2]);
-  CheckEquals(-13,               TCbor_Array(ans.Values[13].Value).Values[3]);
-  CheckEquals('answer',          ans.Values[14].Key);            CheckEquals(12,                   ans.Values[14].Value);      CheckEquals(12,                       ans.ValueByKey['answer']);
-  CheckEquals('language',        ans.Values[15].Key);            CheckEquals('Uyghur',             ans.Values[15].Value);      CheckEquals('Uyghur',                 ans.ValueByKey['language']);
-  CheckEquals('id',              ans.Values[16].Key);            CheckEquals('GV6TA1AATZYBJ3VR',   ans.Values[16].Value);      CheckEquals('GV6TA1AATZYBJ3VR',       ans.ValueByKey['id']);
-  CheckEquals('bio',             ans.Values[17].Key);            CheckEquals('Phasellus massa ligula',  ans.Values[17].Value); CheckEquals('Phasellus massa ligula', ans.ValueByKey['bio']);
-  CheckEquals('version',         ans.Values[18].Key);            CheckEquals(3,                    ans.Values[18].Value);      CheckEquals(3,                        ans.ValueByKey['version']);
-  CheckEquals(4,                 ans.Values[19].Key);            CheckEquals(4,                    ans.Values[19].Value);      CheckEquals(4,                        ans.ValueByKey[4]);
-  CheckEquals(5,                 ans.Values[20].Key);            CheckEquals(5,                    ans.Values[20].Value);      CheckEquals(5,                        ans.ValueByKey[5]);
-  CheckEquals(6,                 ans.Values[21].Key);            CheckEquals(6,                    ans.Values[21].Value);      CheckEquals(6,                        ans.ValueByKey[6]);
-  CheckEquals(7,                 ans.Values[22].Key);            CheckEquals(7,                    ans.Values[22].Value);      CheckEquals(7,                        ans.ValueByKey[7]);
-  CheckEquals(8,                 ans.Values[23].Key);            CheckEquals(8,                    ans.Values[23].Value);      CheckEquals(8,                        ans.ValueByKey[8]);
-  CheckEquals(9,                 ans.Values[24].Key);            CheckEquals(9,                    ans.Values[24].Value);      CheckEquals(9,                        ans.ValueByKey[9]);
-  CheckEquals(10,                ans.Values[25].Key);            CheckEquals(10,                   ans.Values[25].Value);      CheckEquals(10,                       ans.ValueByKey[10]);
-  CheckEquals(100,               ans.Values[26].Key);            CheckEquals(100,                  ans.Values[26].Value);      CheckEquals(100,                      ans.ValueByKey[100]);
-  CheckEquals(1000,              ans.Values[27].Key);            CheckEquals(1000,                 ans.Values[27].Value);      CheckEquals(1000,                     ans.ValueByKey[1000]);
-  CheckEquals(10000,             ans.Values[28].Key);            CheckEquals(10000,                ans.Values[28].Value);      CheckEquals(10000,                    ans.ValueByKey[10000]);
-  CheckEquals(2013,              ans.Values[29].Key);            CheckEquals(-613,                 ans.Values[29].Value);      CheckEquals(-613,                     ans.ValueByKey[2013]);
-  CheckEquals(1997,              ans.Values[30].Key);            CheckEquals(-901,                 ans.Values[30].Value);      CheckEquals(-901,                     ans.ValueByKey[1997]);
-  CheckEquals(1995,              ans.Values[31].Key);            CheckEquals(12301013,             ans.Values[31].Value);      CheckEquals(12301013,                 ans.ValueByKey[1995]);
-  CheckEquals(1994,              ans.Values[32].Key);            CheckEquals(9120219,              ans.Values[32].Value);      CheckEquals(9120219,                  ans.ValueByKey[1994]);
-  CheckEquals(1993,              ans.Values[33].Key);            CheckEquals(309,                  ans.Values[33].Value);      CheckEquals(309,                      ans.ValueByKey[1993]);
-  CheckEquals(1992,              ans.Values[34].Key);            CheckEquals(1204,                 ans.Values[34].Value);      CheckEquals(1204,                     ans.ValueByKey[1992]);
+  CheckEquals(2,                 ans[1].Key);             CheckEquals(2,                    ans[1].Value);       CheckEquals(2,                        ans.ValueByKey(2));
+  CheckEquals(3,                 ans[2].Key);             CheckEquals(3,                    ans[2].Value);       CheckEquals(3,                        ans.ValueByKey(3));
+  CheckEquals('name',            ans[3].Key);             CheckEquals('Erkin Qadir',        ans[3].Value);       CheckEquals('Erkin Qadir',            ans.ValueByKey('name'));
+  CheckEquals('isoCode',         ans[4].Key);             CheckEquals('AQ',                 ans[4].Value);       CheckEquals('AQ',                     ans.ValueByKey('isoCode'));
+  CheckEquals('WHO',             ans[5].Key);             CheckEquals('Joe',                ans[5].Value);       CheckEquals('Joe',                    ans.ValueByKey('WHO'));
+  CheckEquals('WHAT',            ans[6].Key);             CheckEquals('Car',                ans[6].Value);       CheckEquals('Car',                    ans.ValueByKey('WHAT'));
+  CheckEquals('AMOUNT',          ans[7].Key);             CheckEquals(20,                   ans[7].Value);       CheckEquals(20,                       ans.ValueByKey('AMOUNT'));
+  CheckEquals('fruit',           ans[8].Key);             CheckEquals('Apple',              ans[8].Value);       CheckEquals('Apple',                  ans.ValueByKey('fruit'));
+  CheckEquals('size',            ans[9].Key);             CheckEquals('Large',              ans[9].Value);       CheckEquals('Large',                  ans.ValueByKey('size'));
+  CheckEquals('color',           ans[10].Key);            CheckEquals('Red',                ans[10].Value);      CheckEquals('Red',                    ans.ValueByKey('color'));
+  CheckEquals('key',             ans[11].Key);            CheckEquals('ｖａｌｕｅ',            ans[11].Value);      CheckEquals('ｖａｌｕｅ',                 ans.ValueByKey('key'));
+  CheckEquals('array',           ans[12].Key);                                                                          CheckEquals(5,                        ans.ValueByKey('array').PayloadCount);
+  CheckEquals(1,                 TCbor_Array(ans[12].Value).Values[0]);
+  CheckEquals(2,                 TCbor_Array(ans[12].Value).Values[1]);
+  CheckEquals(3,                 TCbor_Array(ans[12].Value).Values[2]);
+  CheckEquals(4,                 TCbor_Array(ans[12].Value).Values[3]);
+  CheckEquals(5,                 TCbor_Array(ans[12].Value).Values[4]);
+  CheckEquals('options',         ans[13].Key);                                                                         CheckEquals(8,                        ans.ValueByKey('options').PayloadCount);
+  CheckEquals(10,                TCbor_Array(ans[13].Value).Values[0]);
+  CheckEquals('11',              TCbor_Array(ans[13].Value).Values[1]);
+  CheckEquals('12',              TCbor_Array(ans[13].Value).Values[2]);
+  CheckEquals(-13,               TCbor_Array(ans[13].Value).Values[3]);
+  CheckEquals('answer',          ans[14].Key);            CheckEquals(12,                   ans[14].Value);      CheckEquals(12,                       ans.ValueByKey('answer'));
+  CheckEquals('language',        ans[15].Key);            CheckEquals('Uyghur',             ans[15].Value);      CheckEquals('Uyghur',                 ans.ValueByKey('language'));
+  CheckEquals('id',              ans[16].Key);            CheckEquals('GV6TA1AATZYBJ3VR',   ans[16].Value);      CheckEquals('GV6TA1AATZYBJ3VR',       ans.ValueByKey('id'));
+  CheckEquals('bio',             ans[17].Key);            CheckEquals('Phasellus massa ligula',  ans[17].Value); CheckEquals('Phasellus massa ligula', ans.ValueByKey('bio'));
+  CheckEquals('version',         ans[18].Key);            CheckEquals(3,                    ans[18].Value);      CheckEquals(3,                        ans.ValueByKey('version'));
+  CheckEquals(4,                 ans[19].Key);            CheckEquals(4,                    ans[19].Value);      CheckEquals(4,                        ans.ValueByKey(4));
+  CheckEquals(5,                 ans[20].Key);            CheckEquals(5,                    ans[20].Value);      CheckEquals(5,                        ans.ValueByKey(5));
+  CheckEquals(6,                 ans[21].Key);            CheckEquals(6,                    ans[21].Value);      CheckEquals(6,                        ans.ValueByKey(6));
+  CheckEquals(7,                 ans[22].Key);            CheckEquals(7,                    ans[22].Value);      CheckEquals(7,                        ans.ValueByKey(7));
+  CheckEquals(8,                 ans[23].Key);            CheckEquals(8,                    ans[23].Value);      CheckEquals(8,                        ans.ValueByKey(8));
+  CheckEquals(9,                 ans[24].Key);            CheckEquals(9,                    ans[24].Value);      CheckEquals(9,                        ans.ValueByKey(9));
+  CheckEquals(10,                ans[25].Key);            CheckEquals(10,                   ans[25].Value);      CheckEquals(10,                       ans.ValueByKey(10));
+  CheckEquals(100,               ans[26].Key);            CheckEquals(100,                  ans[26].Value);      CheckEquals(100,                      ans.ValueByKey(100));
+  CheckEquals(1000,              ans[27].Key);            CheckEquals(1000,                 ans[27].Value);      CheckEquals(1000,                     ans.ValueByKey(1000));
+  CheckEquals(10000,             ans[28].Key);            CheckEquals(10000,                ans[28].Value);      CheckEquals(10000,                    ans.ValueByKey(10000));
+  CheckEquals(2013,              ans[29].Key);            CheckEquals(-613,                 ans[29].Value);      CheckEquals(-613,                     ans.ValueByKey(2013));
+  CheckEquals(1997,              ans[30].Key);            CheckEquals(-901,                 ans[30].Value);      CheckEquals(-901,                     ans.ValueByKey(1997));
+  CheckEquals(1995,              ans[31].Key);            CheckEquals(12301013,             ans[31].Value);      CheckEquals(12301013,                 ans.ValueByKey(1995));
+  CheckEquals(1994,              ans[32].Key);            CheckEquals(9120219,              ans[32].Value);      CheckEquals(9120219,                  ans.ValueByKey(1994));
+  CheckEquals(1993,              ans[33].Key);            CheckEquals(309,                  ans[33].Value);      CheckEquals(309,                      ans.ValueByKey(1993));
+  CheckEquals(1992,              ans[34].Key);            CheckEquals(1204,                 ans[34].Value);      CheckEquals(1204,                     ans.ValueByKey(1992));
 
   CheckFalse(c.Next);
 end;
@@ -1667,16 +1663,17 @@ begin
   CheckEquals(34, c.DataItemSize);
 
   var ans : TCbor_Map := c.AsMap;
-  CheckEquals(1,                         ans.Values[0].Key);
-  CheckEquals('KNjOoN',                  ans.Values[0].Value);
-  CheckEquals(2,                         ans.Values[1].Key);
-  CheckEquals('KsEOkJ',                  ans.Values[1].Value);
-  CheckEquals(-3,                        ans.Values[2].Key);
-  CheckEquals(-613,                      ans.Values[2].Value);
-  CheckEquals(-613,                      ans.ValueByKey[-3]);
+  CheckEquals(1,                         ans[0].Key);
+  CheckEquals('KNjOoN',                  ans[0].Value);
+  CheckEquals(2,                         ans[1].Key);
+  CheckEquals('KsEOkJ',                  ans[1].Value);
+  CheckEquals(-3,                        ans[2].Key);
+  CheckEquals(-613,                      ans[2].Value);
+  CheckEquals(-613,                      ans.ValueByKey(-3));
   CheckEquals(18446744073709551615,      TCbor_UInt64(ans.Values[3].Key));
-  CheckEquals(1997,                      ans.Values[3].Value);
-  CheckEquals(1997,                      ans.ValueByKey[18446744073709551615]);
+  CheckEquals(1997,                      ans[3].Value);
+  CheckEquals(1997,                      ans.ValueByKey(18446744073709551615));
+  CheckTrue(ans.ContainsKey(18446744073709551615));
 
   CheckFalse(c.Next);
 end;
@@ -1741,27 +1738,28 @@ begin
   CheckEquals(194, c.DataItemSize);
 
   var ans := c.AsMap;
-  CheckEquals('fmt',      ans.Values[0].Key);
-  CheckEquals('none',     ans.Values[0].Value);
-  CheckEquals('attStmt',  ans.Values[1].Key);
-  CheckEquals(0,          ans.Values[1].Value.PayloadCount);
-  CheckEquals('authData', ans.Values[2].Key);
-  CheckEquals(166,        Length(ans.Values[2].Value.Value));       // raw data
-  CheckEquals(164,        Length(ans.Values[2].Value.Payload));     // data without header count byte
-  CheckEquals(164,        ans.Values[2].Value.PayloadCount);        // data without header count byte with self-defined property
+  CheckEquals('fmt',      ans[0].Key);
+  CheckEquals('none',     ans[0].Value);
+  CheckEquals('attStmt',  ans[1].Key);
+  CheckEquals(0,          ans[1].Value.PayloadCount);
+  CheckEquals('authData', ans[2].Key);
+  CheckEquals(166,        Length(ans[2].Value.Value));       // raw data
+  CheckEquals(164,        Length(ans[2].Value.Payload));     // data without header count byte
+  CheckEquals(164,        ans[2].Value.PayloadCount);        // data without header count byte with self-defined property
 
   var i : Integer;
   Check(c.AsMap.ContainsKey('fmt', i));
   CheckEquals(0, i);
-  Check(cborUTF8 = c.AsMap.ValueByKey['fmt'].cborType);
-  Check(cborUTF8 = c.AsMap.Values['fmt'].Key.cborType);
-  CheckEquals('none', c.AsMap.Values['fmt'].Value);
-  CheckEquals('none', c.AsMap.ValueByKey['fmt']);
+  Check(cborUTF8 = c.AsMap.ValueByKey('fmt').cborType);
+  Check(cborUTF8 = c.AsMap['fmt'].Key.cborType);
+  CheckEquals('none', c.AsMap['fmt'].Value);
+  CheckEquals('none', c.AsMap[i].Value);
+  CheckEquals('none', c.AsMap.ValueByKey('fmt'));
 
   CheckTrue(c.AsMap.ContainsKey('attStmt'));
-  CheckEquals(0,         c.AsMap.ValueByKey['attStmt'].PayloadCount);
-  Check(cborByteString = c.AsMap.ValueByKey['authData'].cborType);
-  CheckEquals(164,       c.AsMap.ValueByKey['authData'].PayloadCount);
+  CheckEquals(0,         c.AsMap['attStmt'].Value.PayloadCount);
+  Check(cborByteString = c.AsMap['authData'].Value.cborType);
+  CheckEquals(164,       c.AsMap['authData'].Value.PayloadCount);
 
   CheckFalse(c.Next);
 end;
@@ -1775,20 +1773,20 @@ begin
   CheckEquals(14, c.DataItemSize);
 
   CheckTrue(c.AsMap.ContainsKey('uvm'));
-  CheckEquals('uvm', c.AsMap.Values[0].Key);
+  CheckEquals('uvm', c.AsMap[0].Key);
 
-  var value := c.AsMap.ValueByKey['uvm'];
+  var value := c.AsMap.ValueByKey('uvm');
   Check(cborArray = value.cborType);
-  var value0 : TCbor_Array := TCbor_Array(value).Values[0];
+  var value0 : TCbor_Array := TCbor_Array(value)[0];
   Check(cborArray = value0.cborType);
-  CheckEquals(2,    value0.Values[0]);
-  CheckEquals(4,    value0.Values[1]);
-  CheckEquals(2,    value0.Values[2]);
-  var value1 : TCbor_Array := TCbor_Array(value).Values[1];
+  CheckEquals(2,    value0[0]);
+  CheckEquals(4,    value0[1]);
+  CheckEquals(2,    value0[2]);
+  var value1 : TCbor_Array := TCbor_Array(value)[1];
   Check(cborArray = value1.CborType);
-  CheckEquals(4,    value1.Values[0]);
-  CheckEquals(1,    value1.Values[1]);
-  CheckEquals(1,    value1.Values[2]);
+  CheckEquals(4,    value1[0]);
+  CheckEquals(1,    value1[1]);
+  CheckEquals(1,    value1[2]);
 
   CheckFalse(c.Next);
 end;
@@ -1849,35 +1847,37 @@ begin
   var ans := c.AsMap;
   CheckTrue(ans.ContainsKey('authData'));
 
-  var ans0 := TCbor_Map(ans.ValueByKey['authData']);
-  CheckEquals('dKbqkhPJnC90siSSsyDPQCYqlMGpUKA5fyklC2CEHvA=', ans0.ValueByKey['rpIdHash']);
-  CheckEquals(65,                                             ans0.ValueByKey['flags']);
-  CheckEquals(1,                                              ans0.ValueByKey['signCount']);
+  var ans0: TCbor_Map := ans.ValueByKey('authData');
+  CheckEquals('dKbqkhPJnC90siSSsyDPQCYqlMGpUKA5fyklC2CEHvA=', ans0.ValueByKey('rpIdHash'));
+  CheckEquals(65,                                             ans0.ValueByKey('flags'));
+  CheckEquals(1,                                              ans0.ValueByKey('signCount'));
+
   CheckTrue(ans0.ContainsKey('attestedCredentialData'));
-  var ans00 := TCbor_Map(ans0.ValueByKey['attestedCredentialData']);
+  var ans00 := TCbor_Map(ans0['attestedCredentialData'].Value);
+
   CheckTrue(ans00.ContainsKey('aaguid'));
-  var ans000 := TCbor_Map(ans00.ValueByKey['aaguid']);
-  CheckEquals('01020304-0506-0708-0102-030405060708', ans000.ValueByKey['value']);
-  CheckEquals('AQIDBAUGBwgBAgMEBQYHCA==', ans000.ValueByKey['bytes']);
+  var ans000 := TCbor_Map(ans00['aaguid'].Value);
+  CheckEquals('01020304-0506-0708-0102-030405060708',         ans000.ValueByKey('value'));
+  CheckEquals('AQIDBAUGBwgBAgMEBQYHCA==',                     ans000.ValueByKey('bytes'));
 
-  CheckEquals('VKynmbsp6fupArf7g7RDpc2/K0y8TCVVZgREH0LQdrs=', ans00.ValueByKey['credentialId']);
+  CheckEquals('VKynmbsp6fupArf7g7RDpc2/K0y8TCVVZgREH0LQdrs=', ans00.ValueByKey('credentialId'));
+
   CheckTrue(ans00.ContainsKey('cosekey'));
-  var ans001 := TCbor_Map(ans00.ValueByKey['cosekey']);
-  CheckEquals(2, ans001.ValueByKey['1']);
-  CheckEquals(-7, ans001.ValueByKey['3']);
-  CheckEquals(1, ans001.ValueByKey['-1']);
-  CheckEquals('px8ykBNYvkP1cqgfisk8iSzuRsWZXqKiEz061U9FojU=', ans001.ValueByKey['-2']);
-  CheckEquals('DUAe84tjH6KBVvXztkBjKFWO76/756GhIg0XZ432Hys=', ans001.ValueByKey['-3']);
-  CheckEquals(2, ans001.ValueByKey['1']);
+  var ans001: TCbor_Map := ans00.ValueByKey('cosekey');
+  CheckEquals(2,                                              ans001.ValueByKey('1'));
+  CheckEquals(-7,                                             ans001.ValueByKey('3'));
+  CheckEquals(1,                                              ans001.ValueByKey('-1'));
+  CheckEquals('px8ykBNYvkP1cqgfisk8iSzuRsWZXqKiEz061U9FojU=', ans001.ValueByKey('-2'));
+  CheckEquals('DUAe84tjH6KBVvXztkBjKFWO76/756GhIg0XZ432Hys=', ans001.ValueByKey('-3'));
 
-  CheckEquals(0, ans0.ValueByKey['extensions'].PayloadCount);
-  CheckTrue(ans0.ValueByKey['flagUP']);
-  CheckFalse(ans0.ValueByKey['flagUV']);
-  CheckTrue(ans0.ValueByKey['flagAT']);
-  CheckFalse(ans0.ValueByKey['flagED']);
-  CheckTrue(ans.ContainsKey('attStmt'));
-  CheckEquals(261, ans.ValueByKey['attStmt'].ValueCount);
-  CheckEquals('packed', ans.ValueByKey['fmt']);
+  CheckEquals(0, ans0.ValueByKey('extensions').PayloadCount);
+  CheckTrue  (ans0.ValueByKey('flagUP'));
+  CheckFalse (ans0.ValueByKey('flagUV'));
+  CheckTrue  (ans0.ValueByKey('flagAT'));
+  CheckFalse (ans0.ValueByKey('flagED'));
+  CheckTrue  (ans.ContainsKey('attStmt'));
+  CheckEquals(261,      ans.ValueByKey('attStmt').ValueCount);
+  CheckEquals('packed', ans.ValueByKey('fmt'));
 end;
 
 procedure TTestCase_cbor.Test_Signed_0;

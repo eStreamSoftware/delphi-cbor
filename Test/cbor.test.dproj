@@ -156,8 +156,8 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="cbor.TestCase.pas"/>
         <DCCReference Include="..\cbor.pas"/>
+        <DCCReference Include="cbor.TestCase.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
