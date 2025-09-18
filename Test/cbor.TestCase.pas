@@ -3,10 +3,12 @@
 interface
 
 uses
-  TestFramework;
+  System.SysUtils, TestFramework;
 
 type
   TTestCase_cbor = class(TTestCase)
+  private
+    function ArrayStringToBytes(aValue: TArray<string>): TArray<TBytes>;
   published
     procedure Test_Unsigned_0;
     procedure Test_Unsigned_8;
@@ -168,9 +170,16 @@ type
 implementation
 
 uses
-  Winapi.Windows, System.Generics.Collections, System.Math, System.SysUtils, System.Variants,
+  Winapi.Windows, System.Generics.Collections, System.Math, System.Variants,
   Data.FMTBcd,
   cbor;
+
+function TTestCase_cbor.ArrayStringToBytes(aValue: TArray<string>):
+    TArray<TBytes>;
+begin
+  for var s in aValue do
+    Result := Result + [TEncoding.ANSI.GetBytes(s)];
+end;
 
 procedure TTestCase_cbor.Test_SemanticString_0;
 begin
@@ -467,7 +476,7 @@ begin
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
   CheckEquals(12, c.DataItemSize);
-  CheckEquals('Hello World', c.AsByteString.Value[0]);
+  CheckEquals('Hello World', c.AsByteString.AsString[0]);
 
   CheckFalse(c.Next);
 end;
@@ -482,7 +491,7 @@ begin
   CheckEquals('''
   ABC DF
   JK is the best
-  ''', c.AsByteString.Value[0]);
+  ''', c.AsByteString.AsString[0]);
 
   CheckFalse(c.Next);
 end;
@@ -516,7 +525,7 @@ begin
   Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters.
   And God said, Let there be light, and there was light.
   '''
-  , c.AsByteString.Value[0]
+  , c.AsByteString.AsString[0]
   );
 
   CheckFalse(c.Next);
@@ -601,7 +610,7 @@ begin
   Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla nunc massa, dignissim eu nisi vitae, convallis fermentum sapien. Suspendisse congue urna eu elit consequat efficitur. Quisque sit amet accumsan tellus. Nulla rhoncus nunc risus, at faucibus ex aliquet ac. In ac massa arcu. Nullam efficitur dictum sem, quis pellentesque arcu venenatis aliquam. Proin rhoncus ac tellus eu feugiat. Vivamus bibendum ornare magna a iaculis. Praesent in vehicula leo. Etiam dictum enim non dapibus faucibus.
 
   Vivamus et lorem sit amet dolor ornare feugiat. Donec ut arcu non metus ultrices sodales pharetra quis leo. Maecenas laoreet diam non dolor sodales tempor. Nam non vehicula tellus. Curabitur porttitor nunc et suscipit dictum. Integer finibus, velit ac porttitor blandit, mauris est luctus sem, a congue sem nulla id est. Morbi at dignissim mi. Mauris finibus orci sed diam semper, at accumsan erat hendrerit. Suspendisse vel aliquam eros.
-  '''), c.AsByteString.Value[0]);
+  '''), c.AsByteString.AsString[0]);
 
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
@@ -609,7 +618,7 @@ begin
   CheckEquals(AnsiString('''
   Maecenas fermentum urna vitae ipsum tincidunt, sed interdum justo rhoncus.
   Integer quis sem quis tellus faucibus tempor.
-  ''' ), c.AsByteString.Value[0]);
+  ''' ), c.AsByteString.AsString[0]);
 
   CheckFalse(c.Next);
 end;
@@ -624,7 +633,7 @@ begin
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
   CheckEquals(24, c.DataItemSize);
-  CheckEquals(AnsiString('Integer quis sem quist.'), c.AsByteString.Value[0]);
+  CheckEquals(AnsiString('Integer quis sem quist.'), c.AsByteString.AsString[0]);
 
   CheckFalse(c.Next);
 
@@ -637,7 +646,7 @@ begin
   CheckTrue(c.Next);
   Check(cborByteString = c.DataType);
   CheckEquals(5, c.DataItemSize);
-  CheckEquals(#$01#$02#$03#$04, c.AsByteString.Value[0]);
+  CheckEquals(#$01#$02#$03#$04, c.AsByteString.AsString[0]);
 
   CheckFalse(c.Next);
 end;
@@ -656,7 +665,7 @@ begin
   var d := c.AsByteString;
   CheckEquals('(_ ''hihi'', ''BTS'', ''hELlo w0rLd'', ''hello01'')', d);
 
-  var ans : TArray<string> := d.Value;
+  var ans : TArray<string> := d.AsString;
   CheckEquals('hihi', ans[0]);
   CheckEquals('BTS', ans[1]);
   CheckEquals('hELlo w0rLd', ans[2]);
@@ -681,7 +690,7 @@ begin
   var d := c.AsByteString;
   CheckEquals('(_ ''hello'', ''123'', ''hello123hello123'')', d);
 
-  var ans : TArray<string> := d.Value;
+  var ans : TArray<string> := d.AsString;
   CheckEquals('hello', ans[0]);
   CheckEquals('123', ans[1]);
   CheckEquals('hello123hello123', ans[2]);
@@ -692,7 +701,7 @@ end;
 
 procedure TTestCase_cbor.Test_CreateByteString_0;
 begin
-  CheckException(procedure begin var ans := TCbor_ByteString.Create(['hello', 'world'], false); end,
+  CheckException(procedure begin var ans := TCbor_ByteString.Create([[$68, $65, $6C, $6C, $6F], [$77, $6f, $72, $6c, $64]], false); end,
                  Exception,
                  'Length of definite-length string cannot be more than 1');
 end;
@@ -783,7 +792,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeArray_2;
 begin
-  var arr: TArray<TCborItem> := [TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], True)]
+  var arr: TArray<TCborItem> := [TCbor_ByteString.Create(ArrayStringToBytes(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.']), True)]
               + [TCbor_Utf8.Create(['Provident neque ullam corporis sed.'])]
               + [TCbor_Uint64.Create(12123)] + [TCbor_Int64.Create(-789789)] + [TCbor_Int64.Create(-1)];
 
@@ -806,7 +815,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeArray_3;
 begin
-  var arrNested: TArray<TCborItem> :=  [TCbor_Uint64.Create(555)] + [TCbor_ByteString.Create(['Nested', 'arraY'], True)]
+  var arrNested: TArray<TCborItem> :=  [TCbor_Uint64.Create(555)] + [TCbor_ByteString.Create(ArrayStringToBytes(['Nested', 'arraY']), True)]
               + [TCbor_Map.Create([TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(6), TCbor_Uint64.Create(6))])];
 
   var arr: TArray<TCborItem> := [TCbor_Uint64.Create(1)] + [TCbor_UTF8.Create(['lol'])]
@@ -845,8 +854,8 @@ end;
 procedure TTestCase_cbor.Test_EncodeMap_0;
 begin
   var p : TArray<TPair<TCborItem, TCborItem>> :=
-    [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(20), TCbor_ByteString.Create(['Twenty']))] +
-    [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(21), TCbor_ByteString.Create(['Twenty-One']))] +
+    [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(20), TCbor_ByteString.Create(ArrayStringToBytes(['Twenty'])))] +
+    [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(21), TCbor_ByteString.Create(ArrayStringToBytes(['Twenty-One'])))] +
     [TPair<TCborItem, TCborItem>.Create(TCbor_Int64.Create(-22), TCbor_UTF8.Create(['-Twenty-Two']))];
 
   var d := [
@@ -861,14 +870,14 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeMap_1;
 begin
-  var arr : TArray<TCborItem> := [TCbor_ByteString.Create(['L'])] + [TCbor_ByteString.Create(['E'])] + [TCbor_ByteString.Create(['V'])]
-    + [TCbor_ByteString.Create(['E'])] + [TCbor_ByteString.Create(['L'])] + [TCbor_ByteString.Create(['I'])]
-    + [TCbor_ByteString.Create(['N'])] + [TCbor_ByteString.Create(['G'])];
+  var arr : TArray<TCborItem> := [TCbor_ByteString.Create(ArrayStringToBytes(['L']))] + [TCbor_ByteString.Create(ArrayStringToBytes(['E']))] + [TCbor_ByteString.Create(ArrayStringToBytes(['V']))]
+    + [TCbor_ByteString.Create(ArrayStringToBytes(['E']))] + [TCbor_ByteString.Create(ArrayStringToBytes(['L']))] + [TCbor_ByteString.Create(ArrayStringToBytes(['I']))]
+    + [TCbor_ByteString.Create(ArrayStringToBytes(['N']))] + [TCbor_ByteString.Create(ArrayStringToBytes(['G']))];
 
   var p : TArray<TPair<TCborItem, TCborItem>> :=
     [TPair<TCborItem, TCborItem>.Create(TCbor_UTF8.Create(['!??']), TCbor_Int64.Create(-11111))] +
-    [TPair<TCborItem, TCborItem>.Create(TCbor_ByteString.Create(['...']),
-      TCbor_Map.Create([TPair<TCborItem, TCborItem>.Create(TCbor_ByteString.Create(['.']), TCbor_Uint64.Create(666))], false))] +
+    [TPair<TCborItem, TCborItem>.Create(TCbor_ByteString.Create(ArrayStringToBytes(['...'])),
+      TCbor_Map.Create([TPair<TCborItem, TCborItem>.Create(TCbor_ByteString.Create(ArrayStringToBytes(['.'])), TCbor_Uint64.Create(666))], false))] +
     [TPair<TCborItem, TCborItem>.Create(TCbor_Uint64.Create(5010), TCbor_Array.Create(arr, false))];
 
   var d := [
@@ -938,7 +947,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_0;
 begin
-  var c:= TCbor_ByteString.Create(['W1073 Combining signed type and unsigned 64-bit type - treated as an unsigned type']);
+  var c:= TCbor_ByteString.Create(ArrayStringToBytes(['W1073 Combining signed type and unsigned 64-bit type - treated as an unsigned type']));
 
   var d:= [
     $58, $52, $57, $31, $30, $37, $33, $20, $43, $6F, $6D, $62, $69, $6E, $69, $6E,
@@ -955,7 +964,7 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_1;
 begin
-  var c:= TCbor_ByteString.Create(['hELlo w0rLd']);
+  var c:= TCbor_ByteString.Create(ArrayStringToBytes(['hELlo w0rLd']));
 
   var d:= [$4B, $68, $45, $4C, $6C, $6F, $20, $77, $30, $72, $4C, $64];
   var e:= c.Encode_ByteString;
@@ -965,17 +974,17 @@ end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_2;
 begin
-  var c:= TCbor_ByteString.Create(['hello', '01', #$01#$02#$03#$04], True);
+  var c:= TCbor_ByteString.Create(ArrayStringToBytes(['hello', '01', #$01#$02#$03#$04]), True);
 
   var d:= [$5F, $45, $68, $65, $6C, $6C, $6F, $42, $30, $31, $44, $01, $02, $03, $04, $FF];
   var e:= c.Encode_ByteString;
   for var i := Low(d) to High(d) do
-    CheckEquals(d[i], e[i]);
+    CheckEquals(d[i], e[i])
 end;
 
 procedure TTestCase_cbor.Test_EncodeByteString_3;
 begin
-  var c:= TCbor_ByteString.Create(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.'], True);
+  var c:= TCbor_ByteString.Create(ArrayStringToBytes(['Return Value is a byte array containing ', 'the results of encoding the specified character sequence.']), True);
 
   var d:= [
     $5F, $58, $28, $52, $65, $74, $75, $72, $6E, $20, $56, $61, $6C, $75, $65, $20,
@@ -1058,13 +1067,13 @@ begin
   Check(cborByteString = c.DataType);
   CheckEquals(134, c.DataItemSize);
   var d := c.AsByteString;
-  CheckEquals('hihi', d.Value[0]);
-  CheckEquals('BTS', d.Value[1]);
+  CheckEquals('hihi', d.AsString[0]);
+  CheckEquals('BTS', d.AsString[1]);
   CheckEquals('''
   Maecenas fermentum urna vitae ipsum tincidunt, sed interdum justo rhoncus.
   Integer quis sem quis tellus faucibus tempor.
   '''
-  , d.Value[2]
+  , d.AsString[2]
   );
 
   CheckFalse(c.Next);
