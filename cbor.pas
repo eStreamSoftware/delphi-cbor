@@ -67,16 +67,18 @@ type
 
   TCbor_ByteString = record
   private
-    FValue: TArray<string>;
+    FValue: TArray<TBytes>;
     FType: TCborDataType;
     FIsIndefiniteLength: Boolean;
+    function GetAsString: TArray<string>;
   public
-    constructor Create(V: TArray<string>; aIsIndefiniteLength: Boolean = false);
+    constructor Create(V: TArray<TBytes>; aIsIndefiniteLength: Boolean = false);
     class operator Implicit(aCbor: TCborItem): TCbor_ByteString;
     class operator Implicit(a: TCbor_ByteString): TCborItem;
     class operator Implicit(a: TCbor_ByteString): string;
     function Encode_ByteString: TBytes;
-    property Value: TArray<string> read FValue;
+    property AsString: TArray<string> read GetAsString;
+    property Value: TArray<TBytes> read FValue;
     property CborType: TCborDataType read FType;
   end;
 
@@ -85,12 +87,14 @@ type
     FValue: TArray<string>;
     FType: TCborDataType;
     FIsIndefiniteLength: Boolean;
+    function GetAsBytes: TArray<TBytes>;
   public
     constructor Create(V: TArray<string>; aIsIndefiniteLength: Boolean = false);
     class operator Implicit(a: TCbor_UTF8): TCborItem;
     class operator Implicit(aCbor: TCborItem): TCbor_UTF8;
     class operator Implicit(a: TCbor_UTF8): string;
     function Encode_UTF8: TBytes;
+    property AsBytes: TArray<TBytes> read GetAsBytes;
     property Value: TArray<string> read FValue;
     property CborType: TCborDataType read FType;
   end;
@@ -185,6 +189,7 @@ type
   private
     FData: TBytes;
     FIndex: Integer;
+    function AsIndefiniteLengthBytes: TArray<TBytes>;
     function GetLittleEndian(aIndex, Count: Cardinal): UInt64;
     function DecodeCbor(var aIndex: Integer): TCborItem;
     function AsIndefiniteLengthString: TArray<string>;
@@ -250,18 +255,41 @@ function TCbor.AsByteString: TCbor_ByteString;
 begin
   Assert(Length(FData) - FIndex >= DataItemSize, 'Out of bytes to decode.');
   Assert(DataType =  cborByteString, 'Major type unmatched.');
-  
+
   Result.FType := DataType;
-  Result.FValue := TArray<string>.Create();
+  Result.FValue := TArray<TBytes>.Create();
 
   if (FData[FIndex] and ShortCountBit) = IndefiniteLength then begin
     Result.FIsIndefiniteLength := True;
-    Result.FValue := AsIndefiniteLengthString;
+    Result.FValue := AsIndefiniteLengthBytes;
   end
   else begin
     SetLength(Result.FValue, 1);
-    SetString(Result.FValue[0], PAnsiChar(NativeInt(Pointer(FData)) + FIndex + ExtendedCount + 1), DataItemSize - ExtendedCount - 1);
+    Result.FValue[0] := Copy(FData, FIndex + ExtendedCount + 1, DataItemSize - ExtendedCount - 1);
   end;
+end;
+
+function TCbor.AsIndefiniteLengthBytes: TArray<TBytes>;
+begin
+  var n := FIndex + 1;
+  while FData[n] <> BreakCode do
+    if (TCborDataType(FData[n] shr 5) = DataType) then begin
+      var c := TCbor.Create(Copy(FData, n, DataItemSize - 1 - n));
+      c.FIndex := 0;
+      if (c.FData[0] and ShortCountBit) = IndefiniteLength then begin
+        var tempR := c.AsIndefiniteLengthBytes;
+        var b: TBytes := [];
+        for var s in tempR do
+          b := b + s;
+        Result := Result + [b];
+      end else
+        if DataType = cborByteString then
+          Result := Result + c.AsByteString.FValue
+        else
+          Result := Result + c.AsUTF8.AsBytes;
+      Inc(n, c.DataItemSize);
+    end
+    else raise Exception.CreateFmt('Bytes/text mismatch in streaming string: %d', [Byte(DataType)]);     // not of the appropriate major type before break code
 end;
 
 function TCbor.AsInt64: TCbor_Int64;
@@ -351,7 +379,7 @@ begin
         Result := Result + [strR];
       end else
         if DataType = cborByteString then
-          Result := Result + c.AsByteString.Value
+          Result := Result + c.AsByteString.AsString
         else
           Result := Result + c.AsUTF8.Value;
       Inc(n, c.DataItemSize);
@@ -612,7 +640,7 @@ end;
 
 { TCbor_ByteString }
 
-constructor TCbor_ByteString.Create(V: TArray<string>; aIsIndefiniteLength:
+constructor TCbor_ByteString.Create(V: TArray<TBytes>; aIsIndefiniteLength:
     Boolean = false);
 begin
   FValue := V;
@@ -626,16 +654,20 @@ function TCbor_ByteString.Encode_ByteString: TBytes;
 begin
   var a := Function(aStr: TCbor_ByteString): TBytes
   begin
-    for var i in aStr.FValue do begin
-      var b := BytesOf(i);
+    for var b in aStr.FValue do
       Result := Result + TCbor.Encode(Length(b), aStr.FType, False, b);
-    end;
   end;
 
   if FIsIndefiniteLength then
     Result := TCbor.Encode(0, FType, FIsIndefiniteLength, a(Self))
   else
     Result := a(Self);
+end;
+
+function TCbor_ByteString.GetAsString: TArray<string>;
+begin
+  for var b in FValue do
+    Result := Result + [TEncoding.ANSI.GetString(b)];
 end;
 
 class operator TCbor_ByteString.Implicit(aCbor: TCborItem): TCbor_ByteString;
@@ -656,13 +688,13 @@ end;
 class operator TCbor_ByteString.Implicit(a: TCbor_ByteString): string;
 begin
   if not a.FIsIndefiniteLength then
-    Result := a.Value[0]
+    Result := a.AsString[0]
   else begin
   Result := '(_ ';
     for var i := 0 to Length(a.Value) - 2 do
-      Result := Result + '''' + a.Value[i] + ''', ';
+      Result := Result + '''' + a.AsString[i] + ''', ';
 
-    Result := Result + '''' + a.Value[Length(a.Value) - 1] + ''')';
+    Result := Result + '''' + a.AsString[Length(a.AsString) - 1] + ''')';
   end;
 end;
 
@@ -692,6 +724,15 @@ begin
     Result := TCbor.Encode(Length(Result), FType, FIsIndefiniteLength, a(Self))
   else
     Result := a(Self);
+end;
+
+function TCbor_UTF8.GetAsBytes: TArray<TBytes>;
+var b: TBytes;
+begin
+  for var s in FValue do begin
+    b := TEncoding.UTF8.getbytes(s);
+    Result := Result + [TCbor.Encode(Length(b), cborUTF8, False, b)];
+  end;
 end;
 
 class operator TCbor_UTF8.Implicit(a: TCbor_UTF8): TCborItem;
@@ -1011,7 +1052,7 @@ begin
   if c.DataType = cborByteString then begin
     if (a.FTag = positiveBigNum) or (a.FTag = negativeBigNum) then
       Assert(False, 'To be implemented: Big Number');
-    Result := c.AsByteString.Value[0];
+    Result := c.AsByteString.AsString[0];
   end
   else if c.DataType = cborUTF8 then
     Result := c.AsUTF8.Value[0]
